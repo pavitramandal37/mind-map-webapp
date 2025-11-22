@@ -96,31 +96,36 @@ function update(source) {
         .attr("transform", d => `translate(${source.y0},${source.x0})`)
         .on('click', click);
 
-    // Stacked effect rects (bottom layers)
+    // Stacked effect rects (bottom layers) - shown when collapsed
     nodeEnter.append('rect')
         .attr('class', 'stack-rect-2')
-        .attr('rx', 6)
-        .attr('ry', 6)
-        .style("fill", "#fff")
-        .style("stroke", "#ccc")
-        .style("display", "none");
+        .attr('rx', 8)
+        .attr('ry', 8)
+        .style("fill", "#f8f9fa")
+        .style("stroke", "#9ca3af")
+        .style("stroke-width", "1.5px")
+        .style("display", "none")
+        .style("filter", "drop-shadow(0 1px 2px rgba(0,0,0,0.05))");
 
     nodeEnter.append('rect')
         .attr('class', 'stack-rect-1')
-        .attr('rx', 6)
-        .attr('ry', 6)
-        .style("fill", "#fff")
-        .style("stroke", "#ccc")
-        .style("display", "none");
+        .attr('rx', 8)
+        .attr('ry', 8)
+        .style("fill", "#f1f3f5")
+        .style("stroke", "#adb5bd")
+        .style("stroke-width", "1.5px")
+        .style("display", "none")
+        .style("filter", "drop-shadow(0 1px 3px rgba(0,0,0,0.08))");
 
     // Main Node Rect
     nodeEnter.append('rect')
         .attr('class', 'main-rect')
-        .attr('rx', 6)
-        .attr('ry', 6)
+        .attr('rx', 8)
+        .attr('ry', 8)
         .style("fill", d => d._children ? "#e6e6fa" : "#fff")
         .style("stroke", d => d.data.name === rootData.name ? "#6C63FF" : "#ccc")
-        .style("stroke-width", d => d.data.name === rootData.name ? "3px" : "2px");
+        .style("stroke-width", d => d.data.name === rootData.name ? "3px" : "2px")
+        .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
 
     // Title Text
     nodeEnter.append('text')
@@ -129,13 +134,14 @@ function update(source) {
         .style("font-weight", "bold")
         .text(d => d.data.name);
 
-    // Description Text
+    // Description Text (preview)
     nodeEnter.append('text')
         .attr('class', 'node-desc')
-        .attr("dy", "1.4em")
-        .style("font-size", "10px")
+        .attr('text-anchor', 'middle')
+        .style("font-size", "11px")
         .style("fill", "#718096")
-        .text(d => d.data.description);
+        .style("font-style", "italic")
+        .text("");
 
     // Add expand/collapse button (image icon) if children exist
     const expandBtnGroup = nodeEnter.filter(d => d.children || d._children)
@@ -203,22 +209,31 @@ function update(source) {
         .attr('x', d => -d.width / 2)
         .attr('y', d => -d.height / 2)
         .style("fill", d => d._children ? "#e6e6fa" : "#fff")
-        .style("stroke", d => d.data.name === rootData.name ? "#6C63FF" : "#ccc")
-        .style("stroke-width", d => d.data.name === rootData.name ? "3px" : "2px");
+        .style("stroke", d => {
+            if (d.data.name === rootData.name) return "#6C63FF";
+            if (d._children) return "#9333ea"; // Purple for collapsed nodes
+            return "#ccc";
+        })
+        .style("stroke-width", d => {
+            if (d.data.name === rootData.name) return "3px";
+            if (d._children) return "2.5px"; // Thicker for collapsed nodes
+            return "2px";
+        })
+        .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
 
-    // Update Stacked Rects (only if collapsed and has children)
-    const stackOffset = 4;
+    // Update Stacked Rects (only if collapsed and has children) - more prominent offset
+    const stackOffset = 6;
     nodeUpdate.select('rect.stack-rect-1')
         .style("display", d => d._children ? "block" : "none")
-        .attr('width', d => d.width)
-        .attr('height', d => d.height)
+        .attr('width', d => d.width - stackOffset)
+        .attr('height', d => d.height - stackOffset)
         .attr('x', d => -d.width / 2 + stackOffset)
         .attr('y', d => -d.height / 2 + stackOffset);
 
     nodeUpdate.select('rect.stack-rect-2')
         .style("display", d => d._children ? "block" : "none")
-        .attr('width', d => d.width)
-        .attr('height', d => d.height)
+        .attr('width', d => d.width - stackOffset * 2)
+        .attr('height', d => d.height - stackOffset * 2)
         .attr('x', d => -d.width / 2 + stackOffset * 2)
         .attr('y', d => -d.height / 2 + stackOffset * 2);
 
@@ -241,17 +256,24 @@ function update(source) {
             });
         });
 
-    // Update Description
+    // Update Description (one-line preview)
     nodeUpdate.select('text.node-desc')
         .style("display", d => d.hasDescription ? "block" : "none")
         .text(d => {
             if (!d.hasDescription) return "";
-            const desc = d.data.description;
-            // Simple truncation for description (visual only, layout already handled)
-            const maxChars = Math.floor(d.width / 7); // Approx char width
-            return desc.length > maxChars ? desc.substring(0, maxChars) + "..." : desc;
+            const desc = d.data.description.trim();
+            // Truncate to one line with ellipsis
+            const maxChars = Math.floor((d.width - 20) / 6.5); // Approx char width for 11px font
+            if (desc.length > maxChars) {
+                return desc.substring(0, maxChars - 1).trim() + "…";
+            }
+            return desc;
         })
-        .attr('y', d => d.height / 2 - 15); // Position near bottom
+        .attr('x', 0)
+        .attr('y', d => {
+            // Position near bottom of node
+            return d.height / 2 - 12;
+        });
 
     // Update expand/collapse icon position
     nodeUpdate.select('.expand-btn')
@@ -527,18 +549,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Layout Helpers ---
 
 function calculateNodeLayout(rootNode) {
-    const MIN_WIDTH = 120;
-    const MAX_WIDTH = 250;
-    const BASE_HEIGHT = 40;
-    const PADDING = 20;
-    const CHAR_WIDTH = 8; // Approx
+    const MIN_WIDTH = 140;
+    const MAX_WIDTH = 280;
+    const BASE_HEIGHT = 50;
+    const PADDING = 24;
+    const CHAR_WIDTH = 8.5; // Approx for 14px font
     const LINE_HEIGHT = 20;
 
     const depthWidths = {}; // Store max width per depth
 
     // 1. First Pass: Calculate required width for each node
     rootNode.descendants().forEach(d => {
-        const title = d.data.name || "";
+        const title = d.data.name || "Untitled";
         const titleWidth = title.length * CHAR_WIDTH + PADDING * 2;
 
         // Clamp width
@@ -556,7 +578,7 @@ function calculateNodeLayout(rootNode) {
         d.width = depthWidths[d.depth];
 
         // Calculate Text Wrapping
-        const title = d.data.name || "";
+        const title = d.data.name || "Untitled";
         const maxTextWidth = d.width - PADDING * 2;
         const approxCharsPerLine = Math.floor(maxTextWidth / CHAR_WIDTH);
 
@@ -568,7 +590,7 @@ function calculateNodeLayout(rootNode) {
         // Calculate Height
         let contentHeight = d.titleLines.length * LINE_HEIGHT;
         if (d.hasDescription) {
-            contentHeight += LINE_HEIGHT; // Add space for description
+            contentHeight += LINE_HEIGHT + 8; // Add space for description + gap
         }
 
         d.height = Math.max(BASE_HEIGHT, contentHeight + PADDING);
