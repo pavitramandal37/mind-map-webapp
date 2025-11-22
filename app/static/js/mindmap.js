@@ -41,7 +41,7 @@ function initMap() {
     g = svg.append("g")
         .attr("transform", `translate(${width / 2},${height / 2})`);
 
-    tree = d3.tree().nodeSize([50, 200]); // Height, Width spacing
+    tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
 
     root = d3.hierarchy(rootData, d => d.children);
     root.x0 = 0;
@@ -72,14 +72,19 @@ function collapse(d) {
 }
 
 function update(source) {
+    // Calculate node dimensions and positions before rendering
+    calculateNodeLayout(root);
+
     const treeData = tree(root);
 
     // Compute the new tree layout.
     const nodes = treeData.descendants();
     const links = treeData.links();
 
-    // Normalize for fixed-depth.
-    nodes.forEach(d => { d.y = d.depth * 180; });
+    // Normalize for fixed-depth (using calculated y positions)
+    nodes.forEach(d => {
+        d.y = d.targetY; // Use the y position calculated in calculateNodeLayout
+    });
 
     // ****************** Nodes section ***************************
 
@@ -91,24 +96,51 @@ function update(source) {
         .attr("transform", d => `translate(${source.y0},${source.x0})`)
         .on('click', click);
 
-    // Add Circle for the nodes
+    // Stacked effect rects (bottom layers)
     nodeEnter.append('rect')
-        .attr('width', 120)
-        .attr('height', 40)
-        .attr('x', -60)
-        .attr('y', -20)
-        .style("fill", d => d._children ? "#e6e6fa" : "#fff");
+        .attr('class', 'stack-rect-2')
+        .attr('rx', 6)
+        .attr('ry', 6)
+        .style("fill", "#fff")
+        .style("stroke", "#ccc")
+        .style("display", "none");
 
-    // Add labels for the nodes
+    nodeEnter.append('rect')
+        .attr('class', 'stack-rect-1')
+        .attr('rx', 6)
+        .attr('ry', 6)
+        .style("fill", "#fff")
+        .style("stroke", "#ccc")
+        .style("display", "none");
+
+    // Main Node Rect
+    nodeEnter.append('rect')
+        .attr('class', 'main-rect')
+        .attr('rx', 6)
+        .attr('ry', 6)
+        .style("fill", d => d._children ? "#e6e6fa" : "#fff")
+        .style("stroke", d => d.data.name === rootData.name ? "#6C63FF" : "#ccc")
+        .style("stroke-width", d => d.data.name === rootData.name ? "3px" : "2px");
+
+    // Title Text
     nodeEnter.append('text')
+        .attr('class', 'node-title')
         .attr("dy", ".35em")
-        .text(d => d.data.name.length > 15 ? d.data.name.substring(0, 15) + '...' : d.data.name);
+        .style("font-weight", "bold")
+        .text(d => d.data.name);
+
+    // Description Text
+    nodeEnter.append('text')
+        .attr('class', 'node-desc')
+        .attr("dy", "1.4em")
+        .style("font-size", "10px")
+        .style("fill", "#718096")
+        .text(d => d.data.description);
 
     // Add expand/collapse button (image icon) if children exist
     const expandBtnGroup = nodeEnter.filter(d => d.children || d._children)
         .append('g')
         .attr('class', 'expand-btn')
-        .attr('transform', 'translate(60, 0)')
         .on('click', (event, d) => {
             event.stopPropagation();
             toggleChildren(d);
@@ -131,7 +163,6 @@ function update(source) {
     // Add "+" button to add child (image icon)
     const addBtnGroup = nodeEnter.append('g')
         .attr('class', 'add-btn-node')
-        .attr('transform', 'translate(90, 0)')
         .on('click', (event, d) => {
             event.stopPropagation();
             addChild(d);
@@ -143,7 +174,7 @@ function update(source) {
         .attr('fill', '#ffffff')
         .attr('stroke', '#2ECC71')
         .attr('stroke-width', 2);
-    
+
     addBtnGroup.append('image')
         .attr('href', '/static/icons/add.png')
         .attr('x', -8)
@@ -165,19 +196,75 @@ function update(source) {
         .duration(duration)
         .attr("transform", d => `translate(${d.y},${d.x})`);
 
-    nodeUpdate.select('rect')
-        .style("fill", d => d._children ? "#f0f0f0" : "#fff")
+    // Update Main Rect
+    nodeUpdate.select('rect.main-rect')
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
+        .attr('x', d => -d.width / 2)
+        .attr('y', d => -d.height / 2)
+        .style("fill", d => d._children ? "#e6e6fa" : "#fff")
         .style("stroke", d => d.data.name === rootData.name ? "#6C63FF" : "#ccc")
         .style("stroke-width", d => d.data.name === rootData.name ? "3px" : "2px");
 
-    nodeUpdate.select('text')
-        .text(d => d.data.name.length > 15 ? d.data.name.substring(0, 15) + '...' : d.data.name);
+    // Update Stacked Rects (only if collapsed and has children)
+    const stackOffset = 4;
+    nodeUpdate.select('rect.stack-rect-1')
+        .style("display", d => d._children ? "block" : "none")
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
+        .attr('x', d => -d.width / 2 + stackOffset)
+        .attr('y', d => -d.height / 2 + stackOffset);
 
-    // Update expand/collapse icon
-    nodeUpdate.filter(d => d.children || d._children).each(function(d) {
+    nodeUpdate.select('rect.stack-rect-2')
+        .style("display", d => d._children ? "block" : "none")
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
+        .attr('x', d => -d.width / 2 + stackOffset * 2)
+        .attr('y', d => -d.height / 2 + stackOffset * 2);
+
+    // Update Title
+    nodeUpdate.select('text.node-title')
+        .text(null) // Clear existing text
+        .each(function (d) {
+            const el = d3.select(this);
+            const lines = d.titleLines || [d.data.name];
+            const lineHeight = 1.2;
+            // Center vertically if no description, else align top part
+            const startY = d.hasDescription ? (-d.height / 2 + 20) : (-((lines.length - 1) * lineHeight * 10) / 2);
+
+            lines.forEach((line, i) => {
+                el.append('tspan')
+                    .attr('x', 0)
+                    .attr('dy', i === 0 ? 0 : lineHeight + "em")
+                    .attr('y', i === 0 ? startY : null) // Only set y for first line, others follow dy
+                    .text(line);
+            });
+        });
+
+    // Update Description
+    nodeUpdate.select('text.node-desc')
+        .style("display", d => d.hasDescription ? "block" : "none")
+        .text(d => {
+            if (!d.hasDescription) return "";
+            const desc = d.data.description;
+            // Simple truncation for description (visual only, layout already handled)
+            const maxChars = Math.floor(d.width / 7); // Approx char width
+            return desc.length > maxChars ? desc.substring(0, maxChars) + "..." : desc;
+        })
+        .attr('y', d => d.height / 2 - 15); // Position near bottom
+
+    // Update expand/collapse icon position
+    nodeUpdate.select('.expand-btn')
+        .attr('transform', d => `translate(${d.width / 2}, 0)`);
+
+    nodeUpdate.filter(d => d.children || d._children).each(function (d) {
         d3.select(this).selectAll('.expand-btn image')
             .attr('href', d.children ? '/static/icons/compress.png' : '/static/icons/expand.png');
     });
+
+    // Update Add Button position
+    nodeUpdate.select('.add-btn-node')
+        .attr('transform', d => `translate(${d.width / 2 + 30}, 0)`);
 
     // Remove any exiting nodes
     const nodeExit = node.exit().transition()
@@ -186,7 +273,8 @@ function update(source) {
         .remove();
 
     nodeExit.select('rect')
-        .attr('r', 1e-6);
+        .attr('width', 1e-6)
+        .attr('height', 1e-6);
 
     nodeExit.select('text')
         .style('fill-opacity', 1e-6);
@@ -299,34 +387,34 @@ function addChild(d) {
 
 function openEditModal(d) {
     currentNode = d;
-    
+
     // Initialize description if it doesn't exist
     if (!d.data.description) {
         d.data.description = "";
     }
-    
+
     // Show view mode
     document.getElementById('viewMode').style.display = 'block';
     document.getElementById('editMode').style.display = 'none';
-    
+
     // Populate view mode
     document.getElementById('nodeTitleDisplay').textContent = d.data.name || '';
     document.getElementById('nodeDescriptionDisplay').textContent = d.data.description || '(No description)';
-    
+
     document.getElementById('editModal').style.display = 'flex';
 }
 
 function enterEditMode() {
     if (!currentNode) return;
-    
+
     // Switch to edit mode
     document.getElementById('viewMode').style.display = 'none';
     document.getElementById('editMode').style.display = 'block';
-    
+
     // Populate edit fields
     document.getElementById('nodeTitleInput').value = currentNode.data.name || '';
     document.getElementById('nodeDescriptionInput').value = currentNode.data.description || '';
-    
+
     // Focus on title input
     document.getElementById('nodeTitleInput').focus();
     document.getElementById('nodeTitleInput').select();
@@ -335,7 +423,7 @@ function enterEditMode() {
 function closeModal() {
     document.getElementById('editModal').style.display = 'none';
     currentNode = null;
-    
+
     // Reset to view mode
     document.getElementById('viewMode').style.display = 'block';
     document.getElementById('editMode').style.display = 'none';
@@ -347,12 +435,12 @@ function saveNodeEdit() {
     pushToUndo();
     const newName = document.getElementById('nodeTitleInput').value.trim();
     const newDescription = document.getElementById('nodeDescriptionInput').value.trim();
-    
+
     if (!newName) {
         alert('Title cannot be empty');
         return;
     }
-    
+
     currentNode.data.name = newName;
     currentNode.data.description = newDescription;
 
@@ -435,3 +523,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// --- Layout Helpers ---
+
+function calculateNodeLayout(rootNode) {
+    const MIN_WIDTH = 120;
+    const MAX_WIDTH = 250;
+    const BASE_HEIGHT = 40;
+    const PADDING = 20;
+    const CHAR_WIDTH = 8; // Approx
+    const LINE_HEIGHT = 20;
+
+    const depthWidths = {}; // Store max width per depth
+
+    // 1. First Pass: Calculate required width for each node
+    rootNode.descendants().forEach(d => {
+        const title = d.data.name || "";
+        const titleWidth = title.length * CHAR_WIDTH + PADDING * 2;
+
+        // Clamp width
+        let width = Math.max(MIN_WIDTH, Math.min(titleWidth, MAX_WIDTH));
+
+        // Store max width for this depth
+        if (!depthWidths[d.depth] || width > depthWidths[d.depth]) {
+            depthWidths[d.depth] = width;
+        }
+    });
+
+    // 2. Second Pass: Assign final width and calculate height/wrapping
+    rootNode.descendants().forEach(d => {
+        // Assign consistent width for the column
+        d.width = depthWidths[d.depth];
+
+        // Calculate Text Wrapping
+        const title = d.data.name || "";
+        const maxTextWidth = d.width - PADDING * 2;
+        const approxCharsPerLine = Math.floor(maxTextWidth / CHAR_WIDTH);
+
+        d.titleLines = wrapText(title, approxCharsPerLine);
+
+        // Check description
+        d.hasDescription = d.data.description && d.data.description.trim().length > 0;
+
+        // Calculate Height
+        let contentHeight = d.titleLines.length * LINE_HEIGHT;
+        if (d.hasDescription) {
+            contentHeight += LINE_HEIGHT; // Add space for description
+        }
+
+        d.height = Math.max(BASE_HEIGHT, contentHeight + PADDING);
+    });
+
+    // 3. Calculate Y positions (horizontal spacing)
+    const DEPTH_SPACING = 80; // Gap between columns
+
+    // Re-iterate to set targetY
+    rootNode.descendants().forEach(d => {
+        let yPos = 0;
+        for (let i = 0; i < d.depth; i++) {
+            yPos += (depthWidths[i] || MIN_WIDTH) + DEPTH_SPACING;
+        }
+        d.targetY = yPos;
+    });
+}
+
+function wrapText(text, maxChars) {
+    if (text.length <= maxChars) return [text];
+
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = words[0];
+
+    for (let i = 1; i < words.length; i++) {
+        if (currentLine.length + 1 + words[i].length <= maxChars) {
+            currentLine += " " + words[i];
+        } else {
+            lines.push(currentLine);
+            currentLine = words[i];
+        }
+    }
+    lines.push(currentLine);
+
+    return lines;
+}
