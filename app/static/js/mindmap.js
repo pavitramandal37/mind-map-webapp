@@ -96,26 +96,26 @@ function update(source) {
         .attr("transform", d => `translate(${source.y0},${source.x0})`)
         .on('click', click);
 
-    // Stacked effect rects (bottom layers) - shown when collapsed
+    // Stacked effect rects (bottom layers) - shown when collapsed parent nodes
     nodeEnter.append('rect')
         .attr('class', 'stack-rect-2')
         .attr('rx', 8)
         .attr('ry', 8)
-        .style("fill", "#f8f9fa")
-        .style("stroke", "#9ca3af")
+        .style("fill", "#e9ecef")
+        .style("stroke", "#868e96")
         .style("stroke-width", "1.5px")
         .style("display", "none")
-        .style("filter", "drop-shadow(0 1px 2px rgba(0,0,0,0.05))");
+        .style("filter", "drop-shadow(0 2px 3px rgba(0,0,0,0.08))");
 
     nodeEnter.append('rect')
         .attr('class', 'stack-rect-1')
         .attr('rx', 8)
         .attr('ry', 8)
         .style("fill", "#f1f3f5")
-        .style("stroke", "#adb5bd")
+        .style("stroke", "#9ca3af")
         .style("stroke-width", "1.5px")
         .style("display", "none")
-        .style("filter", "drop-shadow(0 1px 3px rgba(0,0,0,0.08))");
+        .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
 
     // Main Node Rect
     nodeEnter.append('rect')
@@ -221,8 +221,8 @@ function update(source) {
         })
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
 
-    // Update Stacked Rects (only if collapsed and has children) - more prominent offset
-    const stackOffset = 6;
+    // Update Stacked Rects (only shown for collapsed parent nodes with hidden children)
+    const stackOffset = 7; // Increased offset for better visibility
     nodeUpdate.select('rect.stack-rect-1')
         .style("display", d => d._children ? "block" : "none")
         .attr('width', d => d.width - stackOffset)
