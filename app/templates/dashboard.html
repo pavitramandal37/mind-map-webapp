@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Mind Map App{% endblock %}
+
+{% block content %}
+<nav class="navbar">
+    <div class="container">
+        <div class="logo">MindMap</div>
+        <div class="nav-links">
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Hero Section with Quote -->
+    <div class="hero-section">
+        <div class="hero-banner">
+            <img src="/static/assets/Homepage_banner.jpg" alt="Mind Map Banner" class="hero-image">
+            <div class="hero-overlay">
+                <div class="hero-content">
+                    <h1 class="hero-quote">Crafted for educational exploration</h1>
+                    <p class="hero-author">— by Pavitra Mandal</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Use Section -->
+    <div class="glass how-to-use">
+        <h2>Unlock Your Creativity</h2>
+        <p style="color: var(--text-muted);">Visualize your ideas in seconds.</p>
+        <div class="steps-container">
+            <div class="step-card glass">
+                <div class="step-icon">💡</div>
+                <h3>Create</h3>
+                <p>Start with a central idea</p>
+            </div>
+            <div class="step-card glass">
+                <div class="step-icon" style="animation-delay: 0.2s">🌿</div>
+                <h3>Branch Out</h3>
+                <p>Add child nodes instantly</p>
+            </div>
+            <div class="step-card glass">
+                <div class="step-icon" style="animation-delay: 0.4s">✨</div>
+                <h3>Customize</h3>
+                <p>Edit and organize freely</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-header">
+        <h2>My Mind Maps</h2>
+    </div>
+
+    <div class="map-grid" id="mapGrid">
+        <!-- Maps will be loaded here -->
+        <div class="map-card add-map-card" onclick="createNewMap()">
+            +
+        </div>
+    </div>
+</div>
+
+<!-- Edit Title Modal -->
+<div id="editTitleModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeEditModal()">&times;</span>
+        <h3>Edit Title</h3>
+        <div class="form-group">
+            <input type="text" id="newMapTitle" class="form-control" placeholder="Enter new title">
+        </div>
+        <button class="btn btn-primary" onclick="submitEditTitle()">Save Changes</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentEditMapId = null;
+
+    async function loadMaps() {
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = '/';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/maps/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const maps = await response.json();
+                const grid = document.getElementById('mapGrid');
+
+                // Keep the add button
+                const addBtn = grid.querySelector('.add-map-card');
+                grid.innerHTML = '';
+
+                maps.forEach(map => {
+                    const card = document.createElement('div');
+                    card.className = 'map-card glass';
+
+                    // Card Content
+                    card.innerHTML = `
+                        <div onclick="window.location.href='/editor/${map.id}'" style="flex-grow: 1;">
+                            <div class="map-title">${map.title}</div>
+                            <div class="map-date">Created: ${new Date(map.created_at || Date.now()).toLocaleDateString()}</div>
+                        </div>
+                        <div class="map-actions">
+                            <button class="action-btn" onclick="openEditModal(${map.id}, '${map.title}')">✏️ Edit</button>
+                            <button class="action-btn" onclick="copyMap(${map.id})">📋 Copy</button>
+                            <button class="action-btn" onclick="deleteMap(${map.id})">🗑️ Delete</button>
+                        </div>
+                    `;
+
+                    grid.appendChild(card);
+                });
+
+                grid.appendChild(addBtn);
+            } else if (response.status === 401) {
+                logout();
+            }
+        } catch (error) {
+            console.error('Error loading maps:', error);
+        }
+    }
+
+    async function createNewMap() {
+        const title = prompt("Enter a title for your new Mind Map:");
+        if (!title) return;
+
+        const token = getAuthToken();
+        try {
+            const response = await fetch('/api/maps/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    data: JSON.stringify({ name: title, children: [] })
+                })
+            });
+
+            if (response.ok) {
+                loadMaps();
+            } else {
+                alert('Failed to create map.');
+            }
+        } catch (error) {
+            console.error('Error creating map:', error);
+        }
+    }
+
+    async function deleteMap(id) {
+        if (!confirm("Are you sure you want to delete this mind map?")) return;
+
+        const token = getAuthToken();
+        try {
+            const response = await fetch(`/api/maps/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                loadMaps();
+            } else {
+                alert('Failed to delete map.');
+            }
+        } catch (error) {
+            console.error('Error deleting map:', error);
+        }
+    }
+
+    async function copyMap(id) {
+        const token = getAuthToken();
+        try {
+            const response = await fetch(`/api/maps/${id}/copy`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                loadMaps();
+            } else {
+                alert('Failed to copy map.');
+            }
+        } catch (error) {
+            console.error('Error copying map:', error);
+        }
+    }
+
+    function openEditModal(id, currentTitle) {
+        currentEditMapId = id;
+        document.getElementById('newMapTitle').value = currentTitle;
+        document.getElementById('editTitleModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editTitleModal').style.display = 'none';
+        currentEditMapId = null;
+    }
+
+    async function submitEditTitle() {
+        if (!currentEditMapId) return;
+        const newTitle = document.getElementById('newMapTitle').value;
+        if (!newTitle) return;
+
+        const token = getAuthToken();
+        try {
+            const response = await fetch(`/api/maps/${currentEditMapId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title: newTitle })
+            });
+
+            if (response.ok) {
+                closeEditModal();
+                loadMaps();
+            } else {
+                alert('Failed to update title.');
+            }
+        } catch (error) {
+            console.error('Error updating title:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadMaps);
+</script>
+{% endblock %}

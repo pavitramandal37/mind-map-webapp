@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Mind Map App{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card glass">
+        <h2>Create Account</h2>
+        <form id="signupForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" class="form-control" required>
+            </div>
+
+            <hr style="border-color: var(--glass-border); margin: 20px 0;">
+
+            <div class="form-group">
+                <label for="securityQuestion">Security Question</label>
+                <select id="securityQuestion" class="form-control" required>
+                    <option value="" disabled selected>Select a question...</option>
+                    <option value="pet">What was the name of your first pet?</option>
+                    <option value="city">In which city were you born?</option>
+                    <option value="school">What was the name of your first school?</option>
+                    <option value="hero">Who was your childhood hero?</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="securityAnswer">Answer (One word)</label>
+                <input type="text" id="securityAnswer" class="form-control" required placeholder="e.g., Fluffy">
+            </div>
+            <div class="form-group">
+                <label for="hint">Hint for Answer</label>
+                <input type="text" id="hint" class="form-control" required placeholder="e.g., Dog's name">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+        </form>
+        <div class="auth-footer">
+            Already have an account? <a href="/">Log in</a>
+        </div>
+    </div>
+</div>
+
+<!-- User Exists Modal -->
+<div id="existsModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeExistsModal()">&times;</span>
+        <h3 style="color: var(--secondary-color)">User Already Exists</h3>
+        <p>A user with this email already exists.</p>
+        <button class="btn btn-primary" onclick="window.location.href='/'">Go to Login</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function closeExistsModal() {
+        document.getElementById('existsModal').style.display = 'none';
+    }
+
+    document.getElementById('email').addEventListener('blur', async (e) => {
+        const email = e.target.value;
+        if (!email) return;
+
+        try {
+            const response = await fetch(`/auth/check-email/${email}`);
+            const data = await response.json();
+            if (data.exists) {
+                document.getElementById('existsModal').style.display = 'flex';
+            }
+        } catch (error) {
+            console.error('Error checking email:', error);
+        }
+    });
+
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const securityQuestion = document.getElementById('securityQuestion').value;
+        const securityAnswer = document.getElementById('securityAnswer').value;
+        const hint = document.getElementById('hint').value;
+
+        // Simple validation for one-word answer
+        if (securityAnswer.trim().split(/\s+/).length > 1) {
+            alert("Security answer must be one word.");
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    security_question: securityQuestion,
+                    security_answer: securityAnswer,
+                    hint
+                })
+            });
+
+            if (response.ok) {
+                alert('Account created successfully! Please log in.');
+                window.location.href = '/';
+            } else {
+                const data = await response.json();
+                if (data.detail === "Email already registered") {
+                    document.getElementById('existsModal').style.display = 'flex';
+                } else {
+                    alert(data.detail || 'Signup failed.');
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        }
+    });
+</script>
+{% endblock %}

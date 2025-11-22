@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Mind Map App{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card glass">
+        <h2>Welcome Back</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Log In</button>
+        </form>
+        <div class="auth-footer">
+            <a href="#" onclick="openForgotModal()">Forgot Password?</a>
+            <br><br>
+            Don't have an account? <a href="/signup">Sign up</a>
+        </div>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgotModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeForgotModal()">&times;</span>
+        <h3>Reset Password</h3>
+
+        <!-- Step 1: Enter Email -->
+        <div id="step1">
+            <div class="form-group">
+                <label>Enter your email</label>
+                <input type="email" id="resetEmail" class="form-control">
+            </div>
+            <button class="btn btn-primary" onclick="checkResetEmail()">Next</button>
+        </div>
+
+        <!-- Step 2: Answer Question -->
+        <div id="step2" style="display: none;">
+            <p id="questionText" style="color: var(--primary-color); font-weight: bold;"></p>
+            <div class="form-group">
+                <label>Answer (One word)</label>
+                <input type="text" id="resetAnswer" class="form-control">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <a href="#" onclick="showHint()" style="font-size: 12px;">Need a hint?</a>
+                <p id="hintText" style="display: none; color: var(--text-muted); font-style: italic; margin-top: 5px;">
+                </p>
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" class="form-control">
+            </div>
+            <button class="btn btn-primary" onclick="submitReset()">Reset Password</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        const formData = new FormData();
+        formData.append('username', email);
+        formData.append('password', password);
+
+        try {
+            const response = await fetch('/auth/token', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('token', data.access_token);
+                window.location.href = '/dashboard';
+            } else {
+                alert('Login failed. Please check your credentials.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        }
+    });
+
+    // Forgot Password Logic
+    function openForgotModal() {
+        document.getElementById('forgotModal').style.display = 'flex';
+        document.getElementById('step1').style.display = 'block';
+        document.getElementById('step2').style.display = 'none';
+    }
+
+    function closeForgotModal() {
+        document.getElementById('forgotModal').style.display = 'none';
+    }
+
+    async function checkResetEmail() {
+        const email = document.getElementById('resetEmail').value;
+        if (!email) return;
+
+        try {
+            const response = await fetch(`/auth/security-question/${email}`);
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('questionText').textContent = data.question;
+                document.getElementById('hintText').textContent = data.hint;
+                document.getElementById('step1').style.display = 'none';
+                document.getElementById('step2').style.display = 'block';
+            } else {
+                alert("User not found.");
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    function showHint() {
+        document.getElementById('hintText').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('hintText').style.display = 'none';
+        }, 5000); // Hide after 5 seconds
+    }
+
+    async function submitReset() {
+        const email = document.getElementById('resetEmail').value;
+        const answer = document.getElementById('resetAnswer').value;
+        const newPassword = document.getElementById('newPassword').value;
+
+        try {
+            const response = await fetch('/auth/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    security_answer: answer,
+                    new_password: newPassword
+                })
+            });
+
+            if (response.ok) {
+                alert("Password reset successfully! Please login.");
+                closeForgotModal();
+            } else {
+                const data = await response.json();
+                alert(data.detail || "Reset failed.");
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+</script>
+{% endblock %}

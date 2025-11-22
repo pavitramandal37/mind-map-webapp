@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Editor - Mind Map App{% endblock %}
+
+{% block head %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+    body {
+        overflow: hidden;
+        /* Prevent scrolling on the whiteboard */
+    }
+
+    #whiteboard {
+        width: 100vw;
+        height: calc(100vh - 60px);
+        /* Adjust for navbar */
+        background-color: #f0f2f5;
+        cursor: grab;
+        position: relative;
+    }
+
+    #whiteboard:active {
+        cursor: grabbing;
+    }
+
+    .node rect {
+        fill: #fff;
+        stroke: #6C63FF;
+        stroke-width: 2px;
+        rx: 10;
+        ry: 10;
+        transition: all 0.3s ease;
+    }
+
+    .node text {
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        pointer-events: none;
+        text-anchor: middle;
+        dominant-baseline: middle;
+    }
+
+    .link {
+        fill: none;
+        stroke: #ccc;
+        stroke-width: 2px;
+    }
+
+    .node:hover rect {
+        stroke: #FF6584;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    }
+
+    /* Controls */
+    .controls {
+        position: absolute;
+        top: 80px;
+        right: 20px;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 100;
+    }
+
+    .control-btn {
+        background: none;
+        border: 1px solid #ddd;
+        padding: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 18px;
+    }
+
+    .control-btn:hover {
+        background: #f5f5f5;
+        color: #6C63FF;
+    }
+
+    /* Edit Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 350px;
+        max-width: 90%;
+    }
+
+    .modal-content textarea {
+        resize: vertical;
+        min-height: 60px;
+    }
+
+    #nodeTitleDisplay, #nodeDescriptionDisplay {
+        padding: 8px 12px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    #nodeDescriptionDisplay {
+        min-height: 60px;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    /* Add Button on Node */
+    .add-btn-node {
+        fill: #2ECC71;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .node:hover .add-btn-node {
+        opacity: 1;
+    }
+
+    .expand-btn {
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .node:hover .expand-btn {
+        opacity: 1;
+    }
+
+    .expand-btn image,
+    .add-btn-node image {
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav class="navbar">
+    <div class="container">
+        <div class="logo">MindMap</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <span id="saveStatus" style="font-size: 12px; color: #999; margin-left: 20px;">Saved</span>
+        </div>
+    </div>
+</nav>
+
+<div id="whiteboard"></div>
+
+<div class="controls">
+    <button class="control-btn" onclick="undo()" title="Undo">↩️</button>
+    <button class="control-btn" onclick="redo()" title="Redo">↪️</button>
+</div>
+
+<!-- Edit Node Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3>Node Details</h3>
+        
+        <!-- View Mode -->
+        <div id="viewMode">
+            <div class="form-group">
+                <label>Title</label>
+                <div id="nodeTitleDisplay" class="form-control" style="background: #f5f5f5; cursor: default;"></div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <div id="nodeDescriptionDisplay" class="form-control" style="background: #f5f5f5; cursor: default; min-height: 60px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="enterEditMode()">Edit</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+
+        <!-- Edit Mode -->
+        <div id="editMode" style="display: none;">
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="nodeTitleInput" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="nodeDescriptionInput" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="deleteCurrentNode()">Delete</button>
+                <button class="btn btn-primary" onclick="saveNodeEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const MAP_ID = {{ map_id }};
+</script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/mindmap.js"></script>
+{% endblock %}

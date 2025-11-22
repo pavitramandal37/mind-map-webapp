@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mind Map App{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+    {% block content %}{% endblock %}
+
+    <script>
+        // Theme Management - Minimalist is the only theme
+        function applyTheme(theme) {
+            // Always use minimalist theme
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'minimalist');
+        }
+
+        // Apply minimalist theme immediately
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme('minimalist');
+        });
+
+        // Auth Helpers
+        function getAuthToken() {
+            return localStorage.getItem('token');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
