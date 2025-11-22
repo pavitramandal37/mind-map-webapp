@@ -16,18 +16,47 @@ An interactive mind mapping web application for visualizing and organizing ideas
 - Python 3.11+ installed
 
 ## Setup
-1. Open a terminal in the project root.
-2. Create a virtual environment:
+
+### 1. Create Virtual Environment
+Open a terminal in the project root and create a virtual environment:
+```bash
+python -m venv .venv
+```
+
+### 2. Activate Virtual Environment
+- **Windows:** `.\.venv\Scripts\activate`
+- **Mac/Linux:** `source .venv/bin/activate`
+
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure Environment Variables ⚠️ IMPORTANT
+**You must create a `.env` file before running the application.**
+
+1. **Copy the example file:**
    ```bash
-   python -m venv .venv
+   cp .env.example .env
    ```
-3. Activate the virtual environment:
-   - Windows: `.\.venv\Scripts\activate`
-   - Mac/Linux: `source .venv/bin/activate`
-4. Install dependencies:
+
+2. **Generate a secure SECRET_KEY:**
    ```bash
-   pip install -r requirements.txt
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
    ```
+
+3. **Edit the `.env` file:**
+   - Replace `your-secret-key-here-replace-this` with the generated key
+   - Keep other settings as default for local development
+
+   Example `.env` file:
+   ```env
+   SECRET_KEY=AbC123XyZ_your-actual-generated-key-here
+   ENVIRONMENT=development
+   DATABASE_URL=sqlite:///./mindmap.db
+   ```
+
+⚠️ **Security Note:** Never commit your `.env` file to git! It contains secrets and is already in `.gitignore`.
 
 ## Run
 Run the application using Uvicorn:
