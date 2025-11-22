@@ -1,75 +1,132 @@
-# Mind Map Webapp
-An interactive mind mapping web application for visualizing and organizing ideas.
+# Mind Map Web Application
 
-## Features
-- 🎨 **Interactive Mind Maps** - Create, edit, and organize your thoughts visually
-- 📝 **Rich Node Content** - Add titles and descriptions to each node
-- 🔄 **Smart Layout** - Automatic text wrapping and consistent column widths
-- 📚 **Stacked Design** - Visual indication for collapsed nodes with children
-- 💾 **Auto-Save** - Your changes are saved automatically
-- 🔐 **Secure Authentication** - JWT-based user authentication
-- ↩️ **Undo/Redo** - Full history management for all changes
+An interactive mind mapping tool for visualizing and organizing your ideas with a beautiful, intuitive interface.
 
-# How to Run the Project
+## ✨ Features
 
-## Prerequisites
-- Python 3.11+ installed
+- 🎨 Interactive mind maps with drag, zoom, and pan
+- 📝 Rich nodes with titles and descriptions
+- 📚 Stacked design for collapsed parent nodes
+- 💾 Auto-save functionality
+- 🔐 Secure user authentication
+- ↩️ Undo/Redo support
 
-## Setup
+---
 
-### 1. Create Virtual Environment
-Open a terminal in the project root and create a virtual environment:
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.11 or higher
+
+### Step 1: Clone and Navigate
+```bash
+cd mind-map-webapp
+```
+
+### Step 2: Create Virtual Environment
 ```bash
 python -m venv .venv
 ```
 
-### 2. Activate Virtual Environment
-- **Windows:** `.\.venv\Scripts\activate`
-- **Mac/Linux:** `source .venv/bin/activate`
+### Step 3: Activate Virtual Environment
+**Windows:**
+```bash
+.\.venv\Scripts\activate
+```
 
-### 3. Install Dependencies
+**Mac/Linux:**
+```bash
+source .venv/bin/activate
+```
+
+### Step 4: Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables ⚠️ IMPORTANT
-**You must create a `.env` file before running the application.**
+### Step 5: Setup Environment Variables
+**Create your `.env` file:**
+```bash
+cp .env.example .env
+```
 
-1. **Copy the example file:**
-   ```bash
-   cp .env.example .env
-   ```
+**Generate a secure secret key:**
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
-2. **Generate a secure SECRET_KEY:**
-   ```bash
-   python -c "import secrets; print(secrets.token_urlsafe(32))"
-   ```
+**Edit `.env` and replace the SECRET_KEY:**
+- Open `.env` in any text editor
+- Replace `your-secret-key-here-replace-this` with the key you just generated
+- Save the file
 
-3. **Edit the `.env` file:**
-   - Replace `your-secret-key-here-replace-this` with the generated key
-   - Keep other settings as default for local development
+Your `.env` should look like this:
+```env
+SECRET_KEY=your-generated-key-goes-here
+ENVIRONMENT=development
+DATABASE_URL=sqlite:///./mindmap.db
+```
 
-   Example `.env` file:
-   ```env
-   SECRET_KEY=AbC123XyZ_your-actual-generated-key-here
-   ENVIRONMENT=development
-   DATABASE_URL=sqlite:///./mindmap.db
-   ```
+⚠️ **Important:** Never commit the `.env` file to git!
 
-⚠️ **Security Note:** Never commit your `.env` file to git! It contains secrets and is already in `.gitignore`.
-
-## Run
-Run the application using Uvicorn:
+### Step 6: Run the Application
 ```bash
 uvicorn app.main:app --reload
 ```
 
-The application will be available at `http://127.0.0.1:8000`.
+### Step 7: Open in Browser
+Navigate to: **http://127.0.0.1:8000**
 
-## Documentation
+---
 
-- **[PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)** - Complete project architecture and features
-- **[DESIGN.md](DESIGN.md)** - Detailed mind map node design and behavior specifications
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide for multiple platforms
-- **[FUTURE_SCOPE.md](FUTURE_SCOPE.md)** - Planned features and enhancements
-- **[CHANGES.md](CHANGES.md)** - Production-ready improvements changelog
+## 📱 Using the Application
+
+1. **Sign Up** - Create your account
+2. **Login** - Access your dashboard
+3. **Create Mind Map** - Start organizing your ideas
+4. **Edit Nodes** - Double-click to edit title and description
+5. **Add Children** - Click the + button to expand your ideas
+6. **Collapse/Expand** - Click the arrow to manage complexity
+
+---
+
+## 📚 Additional Documentation
+
+- [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) - Complete architecture and features
+- [DESIGN.md](DESIGN.md) - Mind map design specifications
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Deploy to production (Render, Railway, Fly.io)
+- [FUTURE_SCOPE.md](FUTURE_SCOPE.md) - Planned features
+- [CHANGES.md](CHANGES.md) - Recent improvements
+
+---
+
+## 🔧 Troubleshooting
+
+**App won't start?**
+- Make sure you created the `.env` file
+- Check that SECRET_KEY is set in `.env`
+- Verify Python 3.11+ is installed: `python --version`
+
+**Can't login?**
+- Clear your browser cache
+- Make sure the database file exists: `mindmap.db`
+
+**Port already in use?**
+- Stop other applications using port 8000
+- Or use a different port: `uvicorn app.main:app --reload --port 8080`
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to submit issues and pull requests.
+
+---
+
+**Built with ❤️ using FastAPI, D3.js, and Python**
