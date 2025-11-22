@@ -39,7 +39,7 @@ Integrate Artificial Intelligence to help users overcome "blank page syndrome" a
 - **Backend:**
     - Create endpoints for `POST /api/ai/generate-from-topic` and `POST /api/ai/generate-from-file`.
     - Implement prompt engineering to output JSON data compatible with the D3.js tree structure.
-- **Frontend:** Add an "AI Assistant" modal in the dashboard and editor to accept user prompts or file uploads.
+- **Frontend:** Add an "AI Assistant" model in the dashboard and editor to accept user prompts or file uploads.
 
 ## 3. Additional Planned Enhancements
 - **Real-time Collaboration:** Allow multiple users to edit the same map simultaneously using WebSockets.
