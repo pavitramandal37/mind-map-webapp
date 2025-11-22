@@ -38,12 +38,21 @@ mind-map-webapp/
 │   │   ├── editor.html     # Mind map editor interface
 │   │   ├── login.html      # Login page
 │   │   └── signup.html     # Signup page
+│   ├── core/               # Core application modules
+│   │   └── config.py       # Settings and configuration
 │   ├── database.py         # Database connection and session handling
 │   ├── main.py             # Application entry point
-│   └── models.py           # SQLAlchemy database models
+│   ├── models.py           # SQLAlchemy database models
+│   ├── schemas.py          # Pydantic validation schemas
+│   └── auth.py             # Authentication utilities
 ├── mindmap.db              # SQLite database file
 ├── requirements.txt        # Python dependencies
-└── RUNNING.md              # Quick start guide
+├── render.yaml             # Render.com deployment configuration
+├── DESIGN.md               # Mind map design specifications
+├── PROJECT_DOCUMENTATION.md # This file
+├── DEPLOYMENT.md           # Deployment guide
+├── CHANGES.md              # Changelog
+└── FUTURE_SCOPE.md         # Feature roadmap
 ```
 
 ## 3. Features & Implementation Details
@@ -63,13 +72,18 @@ mind-map-webapp/
 
 ### 3.3 Mind Map Editor
 - **Interactive Visualization:** Built with D3.js, supporting zooming, panning, and collapsible nodes.
+- **Advanced Node Design:**
+    - **Stacked Visual Effect:** Collapsed parent nodes display a stacked appearance to indicate hidden children.
+    - **Dynamic Sizing:** Node width adjusts based on content with automatic text wrapping.
+    - **Consistent Layout:** Nodes in the same column/layer maintain uniform width.
+    - **Rich Content Display:** Shows both title (multi-line if needed) and description (one-line preview with truncation).
 - **Node Operations:**
     - **Add Child:** Create sub-nodes to expand ideas.
     - **Edit:** Double-click to modify node text and description.
     - **Delete:** Remove nodes (and their children).
     - **Expand/Collapse:** Toggle visibility of child nodes to manage complexity.
 - **State Management:**
-    - **Undo/Redo:** Full history stack allowing users to revert changes.
+    - **Undo/Redo:** Full history stack allowing users to revert changes (up to 20 steps).
     - **Auto-Save:** Changes are saved to the backend automatically.
 
 ### 3.4 Theming
