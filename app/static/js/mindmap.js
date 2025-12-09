@@ -41,14 +41,7 @@ function initMap() {
     g = svg.append("g")
         .attr("transform", `translate(${width / 2},${height / 2})`);
 
-    tree = d3.tree()
-        .nodeSize([0, 200]) // Height is dynamic, set 0 here. Width spacing (depth) is 200
-        .separation((a, b) => {
-            // Dynamic vertical gap: half of a's height + half of b's height + padding
-            const gap = 30; // Min gap between nodes
-            return (a.data.height + b.data.height) / 2 + gap;
-        });
-
+    tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
 
     root = d3.hierarchy(rootData, d => d.children);
     root.x0 = 0;
@@ -573,11 +566,6 @@ function calculateNodeLayout(rootNode) {
         // Clamp width
         let width = Math.max(MIN_WIDTH, Math.min(titleWidth, MAX_WIDTH));
 
-        // Ensure height is initialized for separation calculation later
-        d.data.height = BASE_HEIGHT; // Default until calculated in pass 2
-        d.data.width = width;
-
-
         // Store max width for this depth
         if (!depthWidths[d.depth] || width > depthWidths[d.depth]) {
             depthWidths[d.depth] = width;
@@ -606,11 +594,7 @@ function calculateNodeLayout(rootNode) {
         }
 
         d.height = Math.max(BASE_HEIGHT, contentHeight + PADDING);
-
-        // Store in data for D3 separation accessor
-        d.data.height = d.height;
     });
-
 
     // 3. Calculate Y positions (horizontal spacing)
     const DEPTH_SPACING = 130; // Gap between columns
@@ -626,46 +610,21 @@ function calculateNodeLayout(rootNode) {
 }
 
 function wrapText(text, maxChars) {
-    if (!text) return [""];
+    if (text.length <= maxChars) return [text];
 
     const words = text.split(' ');
     const lines = [];
-    let currentLine = words[0] || "";
-
-    // Handle the first word if it's too long
-    if (currentLine.length > maxChars) {
-        // Force break the first word
-        const chunks = currentLine.match(new RegExp('.{1,' + maxChars + '}', 'g'));
-        lines.push(...chunks.slice(0, -1));
-        currentLine = chunks[chunks.length - 1];
-    }
+    let currentLine = words[0];
 
     for (let i = 1; i < words.length; i++) {
-        let word = words[i];
-
-        // If the word itself is longer than maxChars, we need to split it
-        if (word.length > maxChars) {
-            // Push current line if valid
-            if (currentLine.length > 0) {
-                lines.push(currentLine);
-                currentLine = "";
-            }
-
-            const chunks = word.match(new RegExp('.{1,' + maxChars + '}', 'g'));
-            lines.push(...chunks.slice(0, -1));
-            currentLine = chunks[chunks.length - 1];
-            continue;
-        }
-
-        if (currentLine.length + 1 + word.length <= maxChars) {
-            currentLine += " " + word;
+        if (currentLine.length + 1 + words[i].length <= maxChars) {
+            currentLine += " " + words[i];
         } else {
             lines.push(currentLine);
-            currentLine = word;
+            currentLine = words[i];
         }
     }
-    if (currentLine) lines.push(currentLine);
+    lines.push(currentLine);
 
     return lines;
 }
-
