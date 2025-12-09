@@ -101,9 +101,9 @@ function update(source) {
         .attr('class', 'stack-rect-2')
         .attr('rx', 8)
         .attr('ry', 8)
-        .style("fill", "#e9ecef")
-        .style("stroke", "#868e96")
-        .style("stroke-width", "1.5px")
+        .style("fill", "#ffffff")
+        .style("stroke", "#7F9CF5")
+        .style("stroke-width", "2px")
         .style("display", "none")
         .style("filter", "drop-shadow(0 2px 3px rgba(0,0,0,0.08))");
 
@@ -111,9 +111,9 @@ function update(source) {
         .attr('class', 'stack-rect-1')
         .attr('rx', 8)
         .attr('ry', 8)
-        .style("fill", "#f1f3f5")
-        .style("stroke", "#9ca3af")
-        .style("stroke-width", "1.5px")
+        .style("fill", "#ffffff")
+        .style("stroke", "#7F9CF5")
+        .style("stroke-width", "2px")
         .style("display", "none")
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
 
@@ -208,10 +208,10 @@ function update(source) {
         .attr('height', d => d.height)
         .attr('x', d => -d.width / 2)
         .attr('y', d => -d.height / 2)
-        .style("fill", d => d._children ? "#e6e6fa" : "#fff")
+        .style("fill", "#fff")
         .style("stroke", d => {
             if (d.data.name === rootData.name) return "#6C63FF";
-            if (d._children) return "#9333ea"; // Purple for collapsed nodes
+            if (d._children) return "#7F9CF5"; // Primary Blue for collapsed
             return "#ccc";
         })
         .style("stroke-width", d => {
