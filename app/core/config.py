@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 import secrets
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -20,7 +21,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Database Settings
-    DATABASE_URL: str = "sqlite:///./db/mindmap.db"
+    # Use absolute path to ensure DB is always in the db/ folder relative to project root
+    DATABASE_URL: str = f"sqlite:///{Path(__file__).resolve().parent.parent.parent / 'db' / 'mindmap.db'}"
 
     # CORS Settings
     CORS_ORIGINS: List[str] = [
