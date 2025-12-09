@@ -10,10 +10,12 @@
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" class="form-control" required>
+                <small id="emailError" class="error-text" style="color: #ff6b6b; display: none;"></small>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" class="form-control" required>
+                <small id="passwordError" class="error-text" style="color: #ff6b6b; display: none;"></small>
             </div>
 
             <hr style="border-color: var(--glass-border); margin: 20px 0;">
@@ -27,14 +29,17 @@
                     <option value="school">What was the name of your first school?</option>
                     <option value="hero">Who was your childhood hero?</option>
                 </select>
+                <small id="securityQuestionError" class="error-text" style="color: #ff6b6b; display: none;"></small>
             </div>
             <div class="form-group">
                 <label for="securityAnswer">Answer (One word)</label>
                 <input type="text" id="securityAnswer" class="form-control" required placeholder="e.g., Fluffy">
+                <small id="securityAnswerError" class="error-text" style="color: #ff6b6b; display: none;"></small>
             </div>
             <div class="form-group">
                 <label for="hint">Hint for Answer</label>
                 <input type="text" id="hint" class="form-control" required placeholder="e.g., Dog's name">
+                <small id="hintError" class="error-text" style="color: #ff6b6b; display: none;"></small>
             </div>
 
             <button type="submit" class="btn btn-primary">Sign Up</button>
@@ -115,15 +120,15 @@
                 if (data.detail === "Email already registered") {
                     document.getElementById('existsModal').style.display = 'flex';
                 } else {
-                if (Array.isArray(data.detail)) {
-                    // Handle Pydantic validation errors
-                    const msg = data.detail.map(err => `${err.loc[1]}: ${err.msg}`).join('\n');
-                    alert(msg);
-                } else if (typeof data.detail === 'object') {
-                     alert(JSON.stringify(data.detail));
-                } else {
-                    alert(data.detail || 'Signup failed.');
-                }
+                    if (Array.isArray(data.detail)) {
+                        // Handle Pydantic validation errors
+                        const msg = data.detail.map(err => `${err.loc[1]}: ${err.msg}`).join('\n');
+                        alert(msg);
+                    } else if (typeof data.detail === 'object') {
+                        alert(JSON.stringify(data.detail));
+                    } else {
+                        alert(data.detail || 'Signup failed.');
+                    }
                 }
             }
         } catch (error) {
