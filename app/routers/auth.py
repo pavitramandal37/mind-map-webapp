@@ -45,7 +45,8 @@ def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     except Exception as e:
         logger.error(f"Error during signup: {str(e)}")
         db.rollback()
-        raise HTTPException(status_code=500, detail="An error occurred during signup")
+        # Return the specific error message to the client as requested
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/check-email/{email}")
 def check_email(email: str, db: Session = Depends(database.get_db)):

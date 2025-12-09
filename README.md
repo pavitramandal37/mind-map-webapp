@@ -41,10 +41,12 @@ This application is configured to use a **persistent database** located outside 
 
     **REQUIRED SETTING:**
     ```properties
-    # Persistent Data Path
-    DATABASE_URL=sqlite:///D:/My Apps/MindMapData/mindmap.db
+    # Persistent Data Path - Example for Windows
+    DATABASE_URL=sqlite:///D:/MyAppsData/mindmap.db
+    # Or relative to project:
+    # DATABASE_URL=sqlite:///./db/mindmap.db
     ```
-    *Note: Ensure the directory `D:\My Apps\MindMapData` exists.*
+    *Note: If using an absolute path (like D:/...), ensure the directory exists before running the app.*
 
 3.  **Secure your app**:
     Update the `SECRET_KEY` in `.env`. You can generate one with:
