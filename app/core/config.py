@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Database Settings
-    DATABASE_URL: str = "sqlite:///./mindmap.db"
+    DATABASE_URL: str = "sqlite:///./db/mindmap.db"
 
     # CORS Settings
     CORS_ORIGINS: List[str] = [
