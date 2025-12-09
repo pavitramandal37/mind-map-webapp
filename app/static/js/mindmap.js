@@ -225,15 +225,15 @@ function update(source) {
     const stackOffset = 7; // Increased offset for better visibility
     nodeUpdate.select('rect.stack-rect-1')
         .style("display", d => d._children ? "block" : "none")
-        .attr('width', d => d.width - stackOffset)
-        .attr('height', d => d.height - stackOffset)
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
         .attr('x', d => -d.width / 2 + stackOffset)
         .attr('y', d => -d.height / 2 + stackOffset);
 
     nodeUpdate.select('rect.stack-rect-2')
         .style("display", d => d._children ? "block" : "none")
-        .attr('width', d => d.width - stackOffset * 2)
-        .attr('height', d => d.height - stackOffset * 2)
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
         .attr('x', d => -d.width / 2 + stackOffset * 2)
         .attr('y', d => -d.height / 2 + stackOffset * 2);
 
@@ -550,10 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function calculateNodeLayout(rootNode) {
     const MIN_WIDTH = 140;
-    const MAX_WIDTH = 280;
+    const MAX_WIDTH = 240;
     const BASE_HEIGHT = 50;
     const PADDING = 24;
-    const CHAR_WIDTH = 8.5; // Approx for 14px font
+    const CHAR_WIDTH = 5.75; // Approx for 14px font
     const LINE_HEIGHT = 20;
 
     const depthWidths = {}; // Store max width per depth
@@ -597,7 +597,7 @@ function calculateNodeLayout(rootNode) {
     });
 
     // 3. Calculate Y positions (horizontal spacing)
-    const DEPTH_SPACING = 80; // Gap between columns
+    const DEPTH_SPACING = 130; // Gap between columns
 
     // Re-iterate to set targetY
     rootNode.descendants().forEach(d => {
