@@ -64,13 +64,25 @@
 
 <!-- Edit Title Modal -->
 <div id="editTitleModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content glass">
         <span class="modal-close" onclick="closeEditModal()">&times;</span>
         <h3>Edit Title</h3>
         <div class="form-group">
             <input type="text" id="newMapTitle" class="form-control" placeholder="Enter new title">
         </div>
         <button class="btn btn-primary" onclick="submitEditTitle()">Save Changes</button>
+    </div>
+</div>
+
+<!-- Create Map Modal -->
+<div id="createMapModal" class="modal">
+    <div class="modal-content glass">
+        <span class="modal-close" onclick="closeCreateModal()">&times;</span>
+        <h3>Create New Mind Map</h3>
+        <div class="form-group">
+            <input type="text" id="createMapTitle" class="form-control" placeholder="Enter map title...">
+        </div>
+        <button class="btn btn-primary" onclick="submitCreateMap()">Create</button>
     </div>
 </div>
 
@@ -131,9 +143,23 @@
         }
     }
 
-    async function createNewMap() {
-        const title = prompt("Enter a title for your new Mind Map:");
-        if (!title) return;
+    function createNewMap() {
+        document.getElementById('createMapTitle').value = '';
+        document.getElementById('createMapModal').style.display = 'flex';
+        document.getElementById('createMapTitle').focus();
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createMapModal').style.display = 'none';
+        document.getElementById('createMapTitle').value = '';
+    }
+
+    async function submitCreateMap() {
+        const title = document.getElementById('createMapTitle').value;
+        if (!title) {
+            alert("Please enter a title");
+            return;
+        }
 
         const token = getAuthToken();
         try {
@@ -150,6 +176,7 @@
             });
 
             if (response.ok) {
+                closeCreateModal();
                 loadMaps();
             } else {
                 alert('Failed to create map.');
