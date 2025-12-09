@@ -115,7 +115,15 @@
                 if (data.detail === "Email already registered") {
                     document.getElementById('existsModal').style.display = 'flex';
                 } else {
+                if (Array.isArray(data.detail)) {
+                    // Handle Pydantic validation errors
+                    const msg = data.detail.map(err => `${err.loc[1]}: ${err.msg}`).join('\n');
+                    alert(msg);
+                } else if (typeof data.detail === 'object') {
+                     alert(JSON.stringify(data.detail));
+                } else {
                     alert(data.detail || 'Signup failed.');
+                }
                 }
             }
         } catch (error) {
