@@ -81,6 +81,9 @@ function update(source) {
     const nodes = treeData.descendants();
     const links = treeData.links();
 
+    // Adjust vertical spacing based on node heights
+    adjustVerticalSpacing(root);
+
     // Normalize for fixed-depth (using calculated y positions)
     nodes.forEach(d => {
         d.y = d.targetY; // Use the y position calculated in calculateNodeLayout
@@ -548,6 +551,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- Layout Helpers ---
 
+function adjustVerticalSpacing(rootNode) {
+    const MIN_VERTICAL_GAP = 20; // Minimum gap between nodes
+
+    // Process each level of the tree
+    rootNode.each(node => {
+        if (!node.children || node.children.length === 0) return;
+
+        const children = node.children;
+
+        // Calculate total height needed for all children
+        let currentY = 0;
+
+        // For the first child, center it around 0 initially
+        if (children.length === 1) {
+            children[0].x = 0;
+        } else {
+            // Calculate total height needed
+            let totalHeight = 0;
+            children.forEach(child => {
+                totalHeight += child.height || 50;
+            });
+            totalHeight += (children.length - 1) * MIN_VERTICAL_GAP;
+
+            // Start from the top (negative y)
+            currentY = -totalHeight / 2;
+
+            // Position each child
+            children.forEach((child, i) => {
+                const childHeight = child.height || 50;
+                child.x = currentY + childHeight / 2;
+                currentY += childHeight + MIN_VERTICAL_GAP;
+            });
+        }
+    });
+}
+
 function calculateNodeLayout(rootNode) {
     const MIN_WIDTH = 140;
     const MAX_WIDTH = 240;
@@ -614,17 +653,46 @@ function wrapText(text, maxChars) {
 
     const words = text.split(' ');
     const lines = [];
-    let currentLine = words[0];
+    let currentLine = "";
 
-    for (let i = 1; i < words.length; i++) {
-        if (currentLine.length + 1 + words[i].length <= maxChars) {
-            currentLine += " " + words[i];
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+
+        // If word itself is longer than maxChars, break it into chunks
+        if (word.length > maxChars) {
+            // First, add any existing currentLine
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+                currentLine = "";
+            }
+
+            // Break long word into chunks
+            let remainingWord = word;
+            while (remainingWord.length > maxChars) {
+                lines.push(remainingWord.substring(0, maxChars));
+                remainingWord = remainingWord.substring(maxChars);
+            }
+
+            // Start new line with remaining part of the word
+            if (remainingWord.length > 0) {
+                currentLine = remainingWord;
+            }
         } else {
-            lines.push(currentLine);
-            currentLine = words[i];
+            // Normal word wrapping logic
+            if (currentLine.length === 0) {
+                currentLine = word;
+            } else if (currentLine.length + 1 + word.length <= maxChars) {
+                currentLine += " " + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
         }
     }
-    lines.push(currentLine);
+
+    if (currentLine.length > 0) {
+        lines.push(currentLine);
+    }
 
     return lines;
 }
