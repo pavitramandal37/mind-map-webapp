@@ -50,6 +50,7 @@
     </div>
 </div>
 
+
 <!-- User Exists Modal -->
 <div id="existsModal" class="modal">
     <div class="modal-content">
@@ -60,12 +61,64 @@
     </div>
 </div>
 
+<!-- Error Modal -->
+<div id="errorModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeErrorModal()">&times;</span>
+        <h3 style="color: #ff6b6b">Error</h3>
+        <div id="errorContent" style="margin-bottom: 20px;"></div>
+        <button class="btn btn-primary" onclick="closeErrorModal()">Close</button>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeSuccessModal()">&times;</span>
+        <h3 style="color: #4cd137">Success!</h3>
+        <p>Account created successfully.</p>
+        <button class="btn btn-primary" onclick="closeSuccessModal()">Log In Now</button>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
     function closeExistsModal() {
         document.getElementById('existsModal').style.display = 'none';
+    }
+
+    function closeErrorModal() {
+        document.getElementById('errorModal').style.display = 'none';
+    }
+
+    function closeSuccessModal() {
+        document.getElementById('successModal').style.display = 'none';
+        window.location.href = '/';
+    }
+
+    function showError(message) {
+        const errorContent = document.getElementById('errorContent');
+        errorContent.innerHTML = ''; // Clear previous content
+
+        if (Array.isArray(message)) {
+            // If it's a list (e.g., from validation), make it a list
+            const ul = document.createElement('ul');
+            ul.style.textAlign = 'left';
+            message.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                ul.appendChild(li);
+            });
+            errorContent.appendChild(ul);
+        } else {
+            // Single string message
+            const p = document.createElement('p');
+            p.textContent = message;
+            errorContent.appendChild(p);
+        }
+        document.getElementById('errorModal').style.display = 'flex';
     }
 
     document.getElementById('email').addEventListener('blur', async (e) => {
@@ -121,15 +174,16 @@
                 })
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                alert('Account created successfully! Please log in.');
-                window.location.href = '/';
+                document.getElementById('successModal').style.display = 'flex';
             } else {
-                const data = await response.json();
                 if (data.detail === "Email already registered") {
                     document.getElementById('existsModal').style.display = 'flex';
                 } else if (Array.isArray(data.detail)) {
-                    // Handle Pydantic validation errors
+                    // Handle Pydantic validation errors - try to map to fields first
+                    let globalErrors = [];
                     data.detail.forEach(err => {
                         const field = err.loc[1]; // e.g. 'password', 'email'
                         const msg = err.msg;
@@ -144,19 +198,23 @@
                             errorEl.textContent = msg;
                             errorEl.style.display = 'block';
                         } else {
-                            // Fallback for unknown fields
-                            alert(`${field}: ${msg}`);
+                            // Collect unknown field errors for the modal
+                            globalErrors.push(`${field}: ${msg}`);
                         }
                     });
-                } else if (typeof data.detail === 'object') {
-                    alert(JSON.stringify(data.detail));
+
+                    // If there were unrelated errors, show them in modal
+                    if (globalErrors.length > 0) {
+                        showError(globalErrors);
+                    }
                 } else {
-                    alert(data.detail || 'Signup failed.');
+                    // Generic error message
+                    showError(data.detail || 'An error occurred during sign up.');
                 }
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            showError('A network error occurred. Please try again.');
         }
     });
 </script>
