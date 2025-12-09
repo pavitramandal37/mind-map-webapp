@@ -85,6 +85,13 @@
 
     document.getElementById('signupForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        // Reset errors
+        document.querySelectorAll('.error-text').forEach(el => {
+            el.textContent = '';
+            el.style.display = 'none';
+        });
+
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const securityQuestion = document.getElementById('securityQuestion').value;
@@ -93,7 +100,9 @@
 
         // Simple validation for one-word answer
         if (securityAnswer.trim().split(/\s+/).length > 1) {
-            alert("Security answer must be one word.");
+            const el = document.getElementById('securityAnswerError');
+            el.textContent = "Security answer must be one word.";
+            el.style.display = 'block';
             return;
         }
 
@@ -119,16 +128,30 @@
                 const data = await response.json();
                 if (data.detail === "Email already registered") {
                     document.getElementById('existsModal').style.display = 'flex';
+                } else if (Array.isArray(data.detail)) {
+                    // Handle Pydantic validation errors
+                    data.detail.forEach(err => {
+                        const field = err.loc[1]; // e.g. 'password', 'email'
+                        const msg = err.msg;
+
+                        // Map field names to error element IDs
+                        let errorId = field + 'Error';
+                        if (field === 'security_answer') errorId = 'securityAnswerError';
+                        if (field === 'security_question') errorId = 'securityQuestionError';
+
+                        const errorEl = document.getElementById(errorId);
+                        if (errorEl) {
+                            errorEl.textContent = msg;
+                            errorEl.style.display = 'block';
+                        } else {
+                            // Fallback for unknown fields
+                            alert(`${field}: ${msg}`);
+                        }
+                    });
+                } else if (typeof data.detail === 'object') {
+                    alert(JSON.stringify(data.detail));
                 } else {
-                    if (Array.isArray(data.detail)) {
-                        // Handle Pydantic validation errors
-                        const msg = data.detail.map(err => `${err.loc[1]}: ${err.msg}`).join('\n');
-                        alert(msg);
-                    } else if (typeof data.detail === 'object') {
-                        alert(JSON.stringify(data.detail));
-                    } else {
-                        alert(data.detail || 'Signup failed.');
-                    }
+                    alert(data.detail || 'Signup failed.');
                 }
             }
         } catch (error) {
