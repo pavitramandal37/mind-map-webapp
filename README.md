@@ -56,13 +56,19 @@ This application is configured to use a **persistent database** located outside 
 
 ## Running the Application
 
-Start the development server:
+1.  **Navigate to the project directory**:
+    ```bash
+    cd mind-map-webapp
+    ```
 
-```bash
-uvicorn app.main:app --reload
-```
+2.  **Start the development server**:
+    ```bash
+    uvicorn app.main:app --reload
+    ```
+    *Note: The application will automatically use the database located in `db/mindmap.db` unless overridden by a `.env` file.*
 
-The application will be available at: [http://localhost:8000](http://localhost:8000)
+3.  **Access the App**:
+    Open your browser and navigate to: [http://localhost:8000](http://localhost:8000)
 
 ## Usage
 
