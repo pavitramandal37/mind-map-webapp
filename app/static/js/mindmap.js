@@ -101,9 +101,9 @@ function update(source) {
         .attr('class', 'stack-rect-2')
         .attr('rx', 8)
         .attr('ry', 8)
-        .style("fill", "#e9ecef")
-        .style("stroke", "#868e96")
-        .style("stroke-width", "1.5px")
+        .style("fill", "#ffffff")
+        .style("stroke", "#7F9CF5")
+        .style("stroke-width", "2px")
         .style("display", "none")
         .style("filter", "drop-shadow(0 2px 3px rgba(0,0,0,0.08))");
 
@@ -111,9 +111,9 @@ function update(source) {
         .attr('class', 'stack-rect-1')
         .attr('rx', 8)
         .attr('ry', 8)
-        .style("fill", "#f1f3f5")
-        .style("stroke", "#9ca3af")
-        .style("stroke-width", "1.5px")
+        .style("fill", "#ffffff")
+        .style("stroke", "#7F9CF5")
+        .style("stroke-width", "2px")
         .style("display", "none")
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
 
@@ -208,10 +208,10 @@ function update(source) {
         .attr('height', d => d.height)
         .attr('x', d => -d.width / 2)
         .attr('y', d => -d.height / 2)
-        .style("fill", d => d._children ? "#e6e6fa" : "#fff")
+        .style("fill", "#fff")
         .style("stroke", d => {
             if (d.data.name === rootData.name) return "#6C63FF";
-            if (d._children) return "#9333ea"; // Purple for collapsed nodes
+            if (d._children) return "#7F9CF5"; // Primary Blue for collapsed
             return "#ccc";
         })
         .style("stroke-width", d => {
@@ -225,15 +225,15 @@ function update(source) {
     const stackOffset = 7; // Increased offset for better visibility
     nodeUpdate.select('rect.stack-rect-1')
         .style("display", d => d._children ? "block" : "none")
-        .attr('width', d => d.width - stackOffset)
-        .attr('height', d => d.height - stackOffset)
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
         .attr('x', d => -d.width / 2 + stackOffset)
         .attr('y', d => -d.height / 2 + stackOffset);
 
     nodeUpdate.select('rect.stack-rect-2')
         .style("display", d => d._children ? "block" : "none")
-        .attr('width', d => d.width - stackOffset * 2)
-        .attr('height', d => d.height - stackOffset * 2)
+        .attr('width', d => d.width)
+        .attr('height', d => d.height)
         .attr('x', d => -d.width / 2 + stackOffset * 2)
         .attr('y', d => -d.height / 2 + stackOffset * 2);
 
@@ -550,10 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function calculateNodeLayout(rootNode) {
     const MIN_WIDTH = 140;
-    const MAX_WIDTH = 280;
+    const MAX_WIDTH = 240;
     const BASE_HEIGHT = 50;
     const PADDING = 24;
-    const CHAR_WIDTH = 8.5; // Approx for 14px font
+    const CHAR_WIDTH = 5.75; // Approx for 14px font
     const LINE_HEIGHT = 20;
 
     const depthWidths = {}; // Store max width per depth
@@ -597,7 +597,7 @@ function calculateNodeLayout(rootNode) {
     });
 
     // 3. Calculate Y positions (horizontal spacing)
-    const DEPTH_SPACING = 80; // Gap between columns
+    const DEPTH_SPACING = 130; // Gap between columns
 
     // Re-iterate to set targetY
     rootNode.descendants().forEach(d => {
