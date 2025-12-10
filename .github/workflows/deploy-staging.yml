@@ -1,0 +1,17 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ dev ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to Render Staging
+        run: |
+          curl -X POST "https://api.render.com/deploy/srv-${{ secrets.RENDER_STAGING_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"

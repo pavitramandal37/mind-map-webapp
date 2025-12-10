@@ -11,7 +11,7 @@ let currentNode = null; // For editing
 document.addEventListener('DOMContentLoaded', async () => {
     const mapData = await API.getMap(MAP_ID);
     if (!mapData) {
-        alert('Failed to load map');
+        openErrorModal('Failed to load map. Please try refreshing the page.');
         return;
     }
 
@@ -459,7 +459,7 @@ function saveNodeEdit() {
     const newDescription = document.getElementById('nodeDescriptionInput').value.trim();
 
     if (!newName) {
-        alert('Title cannot be empty');
+        openErrorModal('Title cannot be empty');
         return;
     }
 
@@ -471,14 +471,21 @@ function saveNodeEdit() {
     saveMap();
 }
 
-function deleteCurrentNode() {
+function openDeleteConfirmModal() {
     if (!currentNode) return;
     if (currentNode.depth === 0) {
-        alert("Cannot delete root node");
+        openErrorModal("Cannot delete root node");
         return;
     }
+    document.getElementById('deleteNodeConfirmModal').style.display = 'flex';
+}
 
-    if (!confirm("Are you sure you want to delete this node and its children?")) return;
+function closeDeleteNodeConfirmModal() {
+    document.getElementById('deleteNodeConfirmModal').style.display = 'none';
+}
+
+function confirmDeleteNode() {
+    if (!currentNode) return;
 
     pushToUndo();
 
@@ -488,9 +495,24 @@ function deleteCurrentNode() {
         parent.data.children.splice(index, 1);
     }
 
+    closeDeleteNodeConfirmModal();
     closeModal();
     refreshMap();
     saveMap();
+}
+
+function openErrorModal(msg) {
+    if (msg) document.getElementById('errorMessage').textContent = msg;
+    document.getElementById('errorModal').style.display = 'flex';
+}
+
+function closeErrorModal() {
+    document.getElementById('errorModal').style.display = 'none';
+}
+
+function deleteCurrentNode() {
+    // Kept for backward compatibility, but now calls modal
+    openDeleteConfirmModal();
 }
 
 function refreshMap() {
@@ -552,8 +574,8 @@ function calculateNodeLayout(rootNode) {
     const MIN_WIDTH = 140;
     const MAX_WIDTH = 240;
     const BASE_HEIGHT = 50;
-    const PADDING = 24;
-    const CHAR_WIDTH = 5.75; // Approx for 14px font
+    const PADDING = 20;
+    const CHAR_WIDTH = 6; // Approx for 14px font
     const LINE_HEIGHT = 20;
 
     const depthWidths = {}; // Store max width per depth

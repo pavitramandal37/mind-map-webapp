@@ -26,6 +26,7 @@ UPDATE COMMANDS:
 EXAMPLES:
   python db_manager.py view-all
   python db_manager.py delete-users 1 2 --force
+  python db_manager.py delete-maps 1 2 3 --force
   python db_manager.py export-data --format json --output backup.json
 """
 

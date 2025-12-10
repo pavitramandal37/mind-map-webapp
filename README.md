@@ -41,10 +41,12 @@ This application is configured to use a **persistent database** located outside 
 
     **REQUIRED SETTING:**
     ```properties
-    # Persistent Data Path - Example for Windows
-    DATABASE_URL=sqlite:///D:/MyAppsData/mindmap.db
-    # Or relative to project:
+    # Automatic Database creation:
     # DATABASE_URL=sqlite:///./db/mindmap.db
+
+    # To use Persistent Database we have to create/give the path in the local PC
+    # DATABASE_URL=sqlite:///{enter the path}/mindmap.db
+
     ```
     *Note: If using an absolute path (like D:/...), ensure the directory exists before running the app.*
 

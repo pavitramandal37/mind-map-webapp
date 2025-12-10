@@ -1,7 +1,7 @@
 # Environment Variables
 .env
 
-# Database
+# Database (for SQLite approach)
 *.db
 *.db-journal
 

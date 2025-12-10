@@ -75,6 +75,34 @@
     </div>
 </div>
 
+<!-- Success Modal for Password Reset -->
+<div id="resetSuccessModal" class="modal">
+    <div class="modal-content" style="text-align: center;">
+        <span class="modal-close" onclick="closeSuccessModal()">&times;</span>
+        <h3 style="color: #4cd137; margin-bottom: 15px;">✓ Password Reset Successful!</h3>
+        <p style="margin-bottom: 20px; color: var(--text-muted);">
+            Your password has been reset successfully. Please login with your new password.
+        </p>
+        <button class="btn btn-primary" onclick="closeSuccessModal()" style="width: auto; padding: 10px 30px;">
+            Continue to Login
+        </button>
+    </div>
+</div>
+
+<!-- Reset Error Modal -->
+<div id="resetErrorModal" class="modal">
+    <div class="modal-content" style="text-align: center;">
+        <span class="modal-close" onclick="closeResetErrorModal()">&times;</span>
+        <h3 style="color: #e53e3e; margin-bottom: 15px;">Reset Failed</h3>
+        <p id="resetErrorMessage" style="margin-bottom: 20px; color: var(--text-muted);">
+            Reset failed. Please try again.
+        </p>
+        <button class="btn btn-primary" onclick="closeResetErrorModal()" style="width: auto; padding: 10px 30px;">
+            Try Again
+        </button>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -117,6 +145,23 @@
         document.getElementById('errorModal').style.display = 'none';
     }
 
+    function openSuccessModal() {
+        document.getElementById('resetSuccessModal').style.display = 'flex';
+    }
+
+    function closeSuccessModal() {
+        document.getElementById('resetSuccessModal').style.display = 'none';
+    }
+
+    function openResetErrorModal(msg) {
+        if (msg) document.getElementById('resetErrorMessage').textContent = msg;
+        document.getElementById('resetErrorModal').style.display = 'flex';
+    }
+
+    function closeResetErrorModal() {
+        document.getElementById('resetErrorModal').style.display = 'none';
+    }
+
     // Forgot Password Logic
     function openForgotModal() {
         document.getElementById('forgotModal').style.display = 'flex';
@@ -141,7 +186,7 @@
                 document.getElementById('step1').style.display = 'none';
                 document.getElementById('step2').style.display = 'block';
             } else {
-                alert("User not found.");
+                openResetErrorModal("User not found. Please check the email address.");
             }
         } catch (error) {
             console.error('Error:', error);
@@ -174,11 +219,11 @@
             });
 
             if (response.ok) {
-                alert("Password reset successfully! Please login.");
                 closeForgotModal();
+                openSuccessModal();
             } else {
                 const data = await response.json();
-                alert(data.detail || "Reset failed.");
+                openResetErrorModal(data.detail || "Reset failed. Please check your answer and try again.");
             }
         } catch (error) {
             console.error('Error:', error);

@@ -4,7 +4,9 @@ services:
     name: mindmap-webapp
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python -c "from app.database import Base, engine; Base.metadata.create_all(bind=engine)"
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ENVIRONMENT
@@ -20,7 +22,7 @@ services:
           name: mindmap-db
           property: connectionString
       - key: CORS_ORIGINS
-        value: https://mindmap-webapp.onrender.com
+        value: '["https://mindmap-webapp.onrender.com","http://localhost:8000"]'
       - key: RATE_LIMIT_PER_MINUTE
         value: 60
       - key: LOGIN_RATE_LIMIT
@@ -29,6 +31,8 @@ services:
         value: 3
       - key: MIN_PASSWORD_LENGTH
         value: 8
+      - key: DEBUG
+        value: "false"
     healthCheckPath: /health
 
 databases:
