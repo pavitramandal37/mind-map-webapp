@@ -50,12 +50,14 @@ function initMap() {
     const width = window.innerWidth;
     const height = window.innerHeight - 60;
 
+    zoom = d3.zoom().on("zoom", (event) => {
+        g.attr("transform", event.transform);
+    });
+
     svg = d3.select("#whiteboard").append("svg")
         .attr("width", width)
         .attr("height", height)
-        .call(d3.zoom().on("zoom", (event) => {
-            g.attr("transform", event.transform);
-        }))
+        .call(zoom)
         .on("dblclick.zoom", null); // Disable double click zoom
 
     g = svg.append("g")
@@ -622,7 +624,7 @@ function centerMap() {
     const centerY = canvasHeight / 2;
 
     svg.transition().duration(750).call(
-        d3.zoom().transform,
+        zoom.transform,
         d3.zoomIdentity.translate(centerX, centerY).scale(1)
     );
 }
@@ -840,12 +842,12 @@ function toggleLinkingMode() {
 
     // Clear any existing highlights
     d3.selectAll('.node .main-rect')
-        .style("stroke", function(d) {
+        .style("stroke", function (d) {
             if (d.data.name === rootData.name) return "#6C63FF";
             if (d._children) return "#7F9CF5";
             return "#ccc";
         })
-        .style("stroke-width", function(d) {
+        .style("stroke-width", function (d) {
             if (d.data.name === rootData.name) return "3px";
             if (d._children) return "2.5px";
             return "2px";
@@ -954,7 +956,7 @@ function renderCrossLinks() {
         .attr('stroke-dasharray', '5,5')
         .attr('marker-end', 'url(#arrowhead)')
         .style('cursor', 'pointer')
-        .on('dblclick', function(event, d) {
+        .on('dblclick', function (event, d) {
             event.stopPropagation();
             deleteCrossLink(d.id);
         });
