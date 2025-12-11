@@ -77,7 +77,7 @@ function initMap() {
         .attr("markerHeight", 6)
         .append("svg:path")
         .attr("d", "M 0,-5 L 10,0 L 0,5")
-        .attr("fill", "#FF6347");
+        .attr("fill", "#ccc");
 
     tree = d3.tree().nodeSize([150, 200]); // Height, Width spacing (increased from 120 to 150)
 
@@ -420,17 +420,33 @@ function click(event, d) {
 // --- Actions ---
 
 function pushToUndo() {
-    // Deep copy current state
-    undoStack.push(JSON.parse(JSON.stringify(rootData)));
+    // Deep copy current state (tree + cross-links)
+    undoStack.push({
+        tree: JSON.parse(JSON.stringify(rootData)),
+        crossLinks: JSON.parse(JSON.stringify(crossLinks))
+    });
     if (undoStack.length > 20) undoStack.shift(); // Limit stack size
     redoStack = []; // Clear redo
+}
+
+function pushToUndoCrossLinks() {
+    // Same as pushToUndo but specifically for cross-link operations
+    pushToUndo();
 }
 
 function undo() {
     if (undoStack.length === 0) return;
 
-    redoStack.push(JSON.parse(JSON.stringify(rootData)));
-    rootData = undoStack.pop();
+    // Save current state to redo stack
+    redoStack.push({
+        tree: JSON.parse(JSON.stringify(rootData)),
+        crossLinks: JSON.parse(JSON.stringify(crossLinks))
+    });
+
+    // Restore previous state
+    const previousState = undoStack.pop();
+    rootData = previousState.tree;
+    crossLinks = previousState.crossLinks || [];
 
     refreshMap();
     saveMap();
@@ -439,8 +455,16 @@ function undo() {
 function redo() {
     if (redoStack.length === 0) return;
 
-    undoStack.push(JSON.parse(JSON.stringify(rootData)));
-    rootData = redoStack.pop();
+    // Save current state to undo stack
+    undoStack.push({
+        tree: JSON.parse(JSON.stringify(rootData)),
+        crossLinks: JSON.parse(JSON.stringify(crossLinks))
+    });
+
+    // Restore redo state
+    const redoState = redoStack.pop();
+    rootData = redoState.tree;
+    crossLinks = redoState.crossLinks || [];
 
     refreshMap();
     saveMap();
@@ -905,6 +929,8 @@ function handleCrossLinkClick(d) {
         }
 
         // Create the cross-link
+        pushToUndoCrossLinks(); // Add to undo stack before making changes
+
         const newLink = {
             id: `link-${++crossLinkIdCounter}`,
             sourceId: linkSourceNode.data.id,
@@ -951,14 +977,19 @@ function renderCrossLinks() {
         .append('path')
         .attr('class', 'cross-link')
         .attr('fill', 'none')
-        .attr('stroke', '#FF6347')
-        .attr('stroke-width', '1.5px')
+        .attr('stroke', '#ccc')
+        .attr('stroke-width', '2px')
         .attr('stroke-dasharray', '5,5')
         .attr('marker-end', 'url(#arrowhead)')
         .style('cursor', 'pointer')
         .on('dblclick', function (event, d) {
             event.stopPropagation();
             deleteCrossLink(d.id);
+        })
+        .on('contextmenu', function (event, d) {
+            event.preventDefault();
+            event.stopPropagation();
+            showCrossLinkContextMenu(event, d.id);
         });
 
     // Update (enter + existing)
@@ -968,7 +999,7 @@ function renderCrossLinks() {
             const target = nodeMap.get(d.targetId);
             if (!source || !target) return '';
 
-            // Elbow line (right-angle)
+            // Curved Bézier line (same style as default node connections)
             // Start from right edge of source
             const sx = source.y + source.width / 2;
             const sy = source.x;
@@ -977,26 +1008,79 @@ function renderCrossLinks() {
             const tx = target.y - target.width / 2 - 10;
             const ty = target.x;
 
-            // Midpoint for elbow
-            const mx = (sx + tx) / 2;
-
-            // Draw elbow: horizontal from source, vertical, horizontal to target
-            return `M ${sx} ${sy} L ${mx} ${sy} L ${mx} ${ty} L ${tx} ${ty}`;
+            // Use same Bézier curve as diagonal function for node connections
+            return `M ${sx} ${sy}
+                    C ${(sx + tx) / 2} ${sy},
+                      ${(sx + tx) / 2} ${ty},
+                      ${tx} ${ty}`;
         });
 
     // Exit
     linkElements.exit().remove();
 }
 
-function deleteCrossLink(linkId) {
-    // Show confirmation modal
-    if (confirm('Are you sure you want to delete this dependency link?')) {
-        crossLinks = crossLinks.filter(link => link.id !== linkId);
-        update(root);
-        saveMap();
+let currentCrossLinkToDelete = null;
 
-        const status = document.getElementById('saveStatus');
-        status.textContent = "Cross-link deleted";
-        setTimeout(() => status.textContent = "", 2000);
+function deleteCrossLink(linkId) {
+    // Store the link ID and show confirmation modal
+    currentCrossLinkToDelete = linkId;
+    document.getElementById('deleteCrossLinkModal').style.display = 'flex';
+}
+
+function closeCrossLinkDeleteModal() {
+    currentCrossLinkToDelete = null;
+    document.getElementById('deleteCrossLinkModal').style.display = 'none';
+}
+
+function confirmDeleteCrossLink() {
+    if (!currentCrossLinkToDelete) return;
+
+    pushToUndoCrossLinks(); // Add to undo stack before making changes
+
+    crossLinks = crossLinks.filter(link => link.id !== currentCrossLinkToDelete);
+
+    closeCrossLinkDeleteModal();
+    update(root);
+    saveMap();
+
+    const status = document.getElementById('saveStatus');
+    status.textContent = "Cross-link deleted";
+    setTimeout(() => status.textContent = "", 2000);
+}
+
+// Context menu for cross-links
+function showCrossLinkContextMenu(event, linkId) {
+    const menu = document.getElementById('crossLinkContextMenu');
+    if (!menu) return;
+
+    // Position the menu at cursor
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+    menu.style.display = 'block';
+
+    // Store link ID for deletion
+    menu.dataset.linkId = linkId;
+
+    // Close menu when clicking elsewhere
+    setTimeout(() => {
+        document.addEventListener('click', hideCrossLinkContextMenu, { once: true });
+    }, 0);
+}
+
+function hideCrossLinkContextMenu() {
+    const menu = document.getElementById('crossLinkContextMenu');
+    if (menu) {
+        menu.style.display = 'none';
+        delete menu.dataset.linkId;
+    }
+}
+
+function deleteFromContextMenu() {
+    const menu = document.getElementById('crossLinkContextMenu');
+    const linkId = menu?.dataset.linkId;
+
+    if (linkId) {
+        hideCrossLinkContextMenu();
+        deleteCrossLink(linkId);
     }
 }
