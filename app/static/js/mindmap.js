@@ -7,6 +7,13 @@ let undoStack = [];
 let redoStack = [];
 let currentNode = null; // For editing
 
+// Cross-links state management
+let crossLinks = []; // Array of {sourceId, targetId, id}
+let isLinkingMode = false;
+let linkSourceNode = null;
+let crossLinksGroup = null;
+let crossLinkIdCounter = 0;
+
 // Initialize D3
 document.addEventListener('DOMContentLoaded', async () => {
     const mapData = await API.getMap(MAP_ID);
@@ -16,11 +23,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        rootData = JSON.parse(mapData.data);
-        // Ensure description field exists for all nodes
-        ensureDescriptionField(rootData);
+        const parsedData = JSON.parse(mapData.data);
+
+        // Support both old and new format
+        if (parsedData.tree) {
+            // New format with separate tree and crossLinks
+            rootData = parsedData.tree;
+            crossLinks = parsedData.crossLinks || [];
+        } else {
+            // Old format - just the tree
+            rootData = parsedData;
+            crossLinks = [];
+        }
+
+        // Ensure description and isCollapsed fields exist for all nodes
+        ensureNodeFields(rootData);
     } catch (e) {
-        rootData = { name: mapData.title, description: "", children: [] };
+        rootData = { name: mapData.title, description: "", isCollapsed: false, children: [] };
+        crossLinks = [];
     }
 
     initMap();
@@ -41,7 +61,23 @@ function initMap() {
     g = svg.append("g")
         .attr("transform", `translate(${width / 2},${height / 2})`);
 
-    tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
+    // Create cross-links layer (rendered behind nodes)
+    crossLinksGroup = g.append("g").attr("class", "cross-links-layer");
+
+    // Define arrowhead marker for cross-links
+    svg.append("defs").append("marker")
+        .attr("id", "arrowhead")
+        .attr("viewBox", "-0 -5 10 10")
+        .attr("refX", 8)
+        .attr("refY", 0)
+        .attr("orient", "auto")
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .append("svg:path")
+        .attr("d", "M 0,-5 L 10,0 L 0,5")
+        .attr("fill", "#FF6347");
+
+    tree = d3.tree().nodeSize([150, 200]); // Height, Width spacing (increased from 120 to 150)
 
     root = d3.hierarchy(rootData, d => d.children);
     root.x0 = 0;
@@ -54,12 +90,19 @@ function initMap() {
     centerMap();
 }
 
-function ensureDescriptionField(node) {
+function ensureNodeFields(node) {
     if (!node.description) {
         node.description = "";
     }
+    if (node.isCollapsed === undefined) {
+        node.isCollapsed = false;
+    }
+    // Assign unique IDs for cross-link references
+    if (!node.id) {
+        node.id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
     if (node.children) {
-        node.children.forEach(ensureDescriptionField);
+        node.children.forEach(ensureNodeFields);
     }
 }
 
@@ -72,6 +115,9 @@ function collapse(d) {
 }
 
 function update(source) {
+    // Restore collapsed state from data
+    restoreCollapsedState(root);
+
     // Calculate node dimensions and positions before rendering
     calculateNodeLayout(root);
 
@@ -80,6 +126,9 @@ function update(source) {
     // Compute the new tree layout.
     const nodes = treeData.descendants();
     const links = treeData.links();
+
+    // Apply dynamic spacing to prevent overlaps
+    adjustNodeSpacing(root);
 
     // Normalize for fixed-depth (using calculated y positions)
     nodes.forEach(d => {
@@ -94,7 +143,8 @@ function update(source) {
     const nodeEnter = node.enter().append('g')
         .attr('class', 'node')
         .attr("transform", d => `translate(${source.y0},${source.x0})`)
-        .on('click', click);
+        .on('click', click)
+        .style("cursor", d => isLinkingMode ? "crosshair" : "pointer");
 
     // Stacked effect rects (bottom layers) - shown when collapsed parent nodes
     nodeEnter.append('rect')
@@ -332,6 +382,9 @@ function update(source) {
         d.x0 = d.x;
         d.y0 = d.y;
     });
+
+    // ****************** Cross-Links section ***************************
+    renderCrossLinks();
 }
 
 function diagonal(s, d) {
@@ -343,15 +396,22 @@ function diagonal(s, d) {
 
 function toggleChildren(d) {
     if (d.children) {
+        // Collapse: move children to _children and set flag
         d._children = d.children;
         d.children = null;
+        d.data.isCollapsed = true;
     } else {
+        // Expand: restore children from _children and clear flag
         d.children = d._children;
         d._children = null;
+        d.data.isCollapsed = false;
     }
 }
 
 function click(event, d) {
+    if (isLinkingMode) {
+        handleCrossLinkClick(d);
+    }
     // Optional: Center on click or just select
 }
 
@@ -533,8 +593,14 @@ async function saveMap() {
     const status = document.getElementById('saveStatus');
     status.textContent = "Saving...";
 
+    // Save both tree and cross-links
+    const dataToSave = {
+        tree: rootData,
+        crossLinks: crossLinks
+    };
+
     const success = await API.updateMap(MAP_ID, {
-        data: JSON.stringify(rootData)
+        data: JSON.stringify(dataToSave)
     });
 
     if (success) {
@@ -547,9 +613,17 @@ async function saveMap() {
 }
 
 function centerMap() {
+    const canvasWidth = window.innerWidth;
+    const canvasHeight = window.innerHeight - 60; // Minus navbar
+
+    // Root is at (0, 0) in 'g' element coordinate space
+    // We need to translate so root appears at canvas center
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+
     svg.transition().duration(750).call(
         d3.zoom().transform,
-        d3.zoomIdentity.translate(window.innerWidth / 2 - 100, window.innerHeight / 2).scale(1)
+        d3.zoomIdentity.translate(centerX, centerY).scale(1)
     );
 }
 
@@ -649,4 +723,278 @@ function wrapText(text, maxChars) {
     lines.push(currentLine);
 
     return lines;
+}
+
+// ****************** PERSISTENT COLLAPSE STATE ***************************
+
+function restoreCollapsedState(node) {
+    // Recursively restore collapsed state from data.isCollapsed flag
+    if (node.data.isCollapsed && node.data.children && node.data.children.length > 0) {
+        // This node should be collapsed
+        if (node.children) {
+            node._children = node.children;
+            node.children = null;
+        }
+    } else if (!node.data.isCollapsed && node._children) {
+        // This node should be expanded
+        node.children = node._children;
+        node._children = null;
+    }
+
+    // Recursively process children (if expanded)
+    if (node.children) {
+        node.children.forEach(restoreCollapsedState);
+    }
+}
+
+// ****************** DYNAMIC SPACING & COLLISION DETECTION ***************************
+
+const MIN_NODE_GAP = 40; // Minimum gap between nodes
+
+function calculateSubtreeBounds(node) {
+    // Calculate the vertical extent of a node and all its descendants
+    if (!node.children || node.children.length === 0) {
+        return {
+            top: node.x - (node.height || 50) / 2,
+            bottom: node.x + (node.height || 50) / 2
+        };
+    }
+
+    const childBounds = node.children.map(calculateSubtreeBounds);
+    const nodeTop = node.x - (node.height || 50) / 2;
+    const nodeBottom = node.x + (node.height || 50) / 2;
+
+    return {
+        top: Math.min(nodeTop, ...childBounds.map(b => b.top)),
+        bottom: Math.max(nodeBottom, ...childBounds.map(b => b.bottom))
+    };
+}
+
+function adjustNodeSpacing(node) {
+    // Adjust spacing for all nodes to prevent overlaps
+    if (!node.children || node.children.length === 0) return;
+
+    // Sort children by x position (vertical position in our rotated layout)
+    const sortedChildren = node.children.slice().sort((a, b) => a.x - b.x);
+
+    // Calculate bounds for each child subtree
+    const childrenWithBounds = sortedChildren.map(child => ({
+        node: child,
+        bounds: calculateSubtreeBounds(child)
+    }));
+
+    // Adjust positions to maintain minimum gap
+    for (let i = 0; i < childrenWithBounds.length - 1; i++) {
+        const current = childrenWithBounds[i];
+        const next = childrenWithBounds[i + 1];
+
+        const currentBottom = current.bounds.bottom;
+        const nextTop = next.bounds.top;
+        const actualGap = nextTop - currentBottom;
+
+        if (actualGap < MIN_NODE_GAP) {
+            // Need to push next node and all following nodes down
+            const shift = MIN_NODE_GAP - actualGap;
+
+            // Shift this node and all subsequent siblings
+            for (let j = i + 1; j < childrenWithBounds.length; j++) {
+                shiftNodeAndDescendants(childrenWithBounds[j].node, shift);
+                // Recalculate bounds after shift
+                childrenWithBounds[j].bounds = calculateSubtreeBounds(childrenWithBounds[j].node);
+            }
+        }
+    }
+
+    // Recursively adjust spacing for all children
+    node.children.forEach(adjustNodeSpacing);
+}
+
+function shiftNodeAndDescendants(node, shift) {
+    // Shift a node and all its descendants by the given amount
+    node.x += shift;
+    if (node.children) {
+        node.children.forEach(child => shiftNodeAndDescendants(child, shift));
+    }
+}
+
+// ****************** CROSS-LINKS FEATURE ***************************
+
+function toggleLinkingMode() {
+    isLinkingMode = !isLinkingMode;
+    linkSourceNode = null;
+
+    // Update cursor for all nodes
+    d3.selectAll('.node')
+        .style("cursor", isLinkingMode ? "crosshair" : "pointer");
+
+    // Update canvas cursor
+    d3.select("#whiteboard svg")
+        .style("cursor", isLinkingMode ? "crosshair" : "grab");
+
+    // Update button appearance
+    const btn = document.getElementById('crossLinkBtn');
+    if (btn) {
+        btn.style.background = isLinkingMode ? "#6C63FF" : "none";
+        btn.style.color = isLinkingMode ? "white" : "#333";
+    }
+
+    // Clear any existing highlights
+    d3.selectAll('.node .main-rect')
+        .style("stroke", function(d) {
+            if (d.data.name === rootData.name) return "#6C63FF";
+            if (d._children) return "#7F9CF5";
+            return "#ccc";
+        })
+        .style("stroke-width", function(d) {
+            if (d.data.name === rootData.name) return "3px";
+            if (d._children) return "2.5px";
+            return "2px";
+        })
+        .style("stroke-dasharray", "none");
+
+    if (!isLinkingMode) {
+        // Exiting linking mode
+        const status = document.getElementById('saveStatus');
+        status.textContent = "Link mode off";
+        setTimeout(() => status.textContent = "", 2000);
+    } else {
+        const status = document.getElementById('saveStatus');
+        status.textContent = "Select source node...";
+    }
+}
+
+function handleCrossLinkClick(d) {
+    if (!linkSourceNode) {
+        // First click: select source
+        linkSourceNode = d;
+
+        // Highlight source with green dashed border
+        d3.select(d3.event ? d3.event.target : event.target)
+            .select('.main-rect')
+            .style("stroke", "#00FF00")
+            .style("stroke-width", "3px")
+            .style("stroke-dasharray", "5,5");
+
+        const status = document.getElementById('saveStatus');
+        status.textContent = "Select target node...";
+    } else {
+        // Second click: select target
+        if (linkSourceNode === d) {
+            // Same node - cancel
+            const status = document.getElementById('saveStatus');
+            status.textContent = "Cannot link node to itself";
+            setTimeout(() => status.textContent = "", 2000);
+            toggleLinkingMode();
+            return;
+        }
+
+        // Check if link already exists
+        const linkExists = crossLinks.some(link =>
+            (link.sourceId === linkSourceNode.data.id && link.targetId === d.data.id) ||
+            (link.sourceId === d.data.id && link.targetId === linkSourceNode.data.id)
+        );
+
+        if (linkExists) {
+            const status = document.getElementById('saveStatus');
+            status.textContent = "Link already exists";
+            setTimeout(() => status.textContent = "", 2000);
+            toggleLinkingMode();
+            return;
+        }
+
+        // Create the cross-link
+        const newLink = {
+            id: `link-${++crossLinkIdCounter}`,
+            sourceId: linkSourceNode.data.id,
+            targetId: d.data.id
+        };
+        crossLinks.push(newLink);
+
+        // Exit linking mode
+        toggleLinkingMode();
+
+        // Re-render
+        update(root);
+        saveMap();
+
+        const status = document.getElementById('saveStatus');
+        status.textContent = "Cross-link created";
+        setTimeout(() => status.textContent = "", 2000);
+    }
+}
+
+function renderCrossLinks() {
+    if (!crossLinksGroup) return;
+
+    // Get all current nodes
+    const allNodes = root.descendants();
+
+    // Create a map of node ID to node position
+    const nodeMap = new Map();
+    allNodes.forEach(n => {
+        nodeMap.set(n.data.id, { x: n.x, y: n.y, width: n.width, height: n.height });
+    });
+
+    // Filter cross-links to only those where both nodes exist
+    const validLinks = crossLinks.filter(link =>
+        nodeMap.has(link.sourceId) && nodeMap.has(link.targetId)
+    );
+
+    // Bind data
+    const linkElements = crossLinksGroup.selectAll('.cross-link')
+        .data(validLinks, d => d.id);
+
+    // Enter
+    const linkEnter = linkElements.enter()
+        .append('path')
+        .attr('class', 'cross-link')
+        .attr('fill', 'none')
+        .attr('stroke', '#FF6347')
+        .attr('stroke-width', '1.5px')
+        .attr('stroke-dasharray', '5,5')
+        .attr('marker-end', 'url(#arrowhead)')
+        .style('cursor', 'pointer')
+        .on('dblclick', function(event, d) {
+            event.stopPropagation();
+            deleteCrossLink(d.id);
+        });
+
+    // Update (enter + existing)
+    linkEnter.merge(linkElements)
+        .attr('d', d => {
+            const source = nodeMap.get(d.sourceId);
+            const target = nodeMap.get(d.targetId);
+            if (!source || !target) return '';
+
+            // Elbow line (right-angle)
+            // Start from right edge of source
+            const sx = source.y + source.width / 2;
+            const sy = source.x;
+
+            // End at left edge of target (accounting for arrowhead)
+            const tx = target.y - target.width / 2 - 10;
+            const ty = target.x;
+
+            // Midpoint for elbow
+            const mx = (sx + tx) / 2;
+
+            // Draw elbow: horizontal from source, vertical, horizontal to target
+            return `M ${sx} ${sy} L ${mx} ${sy} L ${mx} ${ty} L ${tx} ${ty}`;
+        });
+
+    // Exit
+    linkElements.exit().remove();
+}
+
+function deleteCrossLink(linkId) {
+    // Show confirmation modal
+    if (confirm('Are you sure you want to delete this dependency link?')) {
+        crossLinks = crossLinks.filter(link => link.id !== linkId);
+        update(root);
+        saveMap();
+
+        const status = document.getElementById('saveStatus');
+        status.textContent = "Cross-link deleted";
+        setTimeout(() => status.textContent = "", 2000);
+    }
 }
