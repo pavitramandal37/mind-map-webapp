@@ -6,9 +6,7 @@ let root;
 let undoStack = [];
 let redoStack = [];
 let currentNode = null; // For editing
-let crossLinks = []; // Feature B: Cross-Links
-let isLinkingMode = false; // Feature B: Cross-Links Interaction
-let sourceNode = null; // For Link Creation
+
 
 // Initialize D3
 document.addEventListener('DOMContentLoaded', async () => {
@@ -20,22 +18,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const loadedData = JSON.parse(mapData.data);
-        // Feature B: Data Migration
-        if (loadedData.root && Array.isArray(loadedData.crossLinks)) {
-            rootData = loadedData.root;
-            crossLinks = loadedData.crossLinks;
-        } else {
-            // Backward compatibility: old format was just rootData
-            rootData = loadedData;
-            crossLinks = [];
-        }
+        rootData = loadedData;
 
         // Ensure description field exists for all nodes
         ensureDescriptionField(rootData);
     } catch (e) {
         console.error("Error parsing map data:", e);
         rootData = { name: mapData.title, description: "", children: [] };
-        crossLinks = [];
     }
 
     initMap();
@@ -52,31 +41,11 @@ function initMap() {
             g.attr("transform", event.transform);
         }))
         .on("dblclick.zoom", null) // Disable double click zoom
-        .on("click", (event) => {
-            // Cancel linking mode if clicking background
-            if (isLinkingMode && event.target.tagName === 'svg') {
-                exitLinkingMode();
-            }
-        });
+        .on("click", null);
 
     g = svg.append("g");
 
-    // Define Arrowhead Marker
-    const defs = svg.append("defs");
-    defs.append("marker")
-        .attr("id", "marker-crosslink-arrow")
-        .attr("viewBox", "0 0 10 10")
-        .attr("refX", 10) // Tip of the marker at the end of the line
-        .attr("refY", 5)
-        .attr("markerWidth", 8)
-        .attr("markerHeight", 8)
-        .attr("orient", "auto")
-        .append("path")
-        .attr("d", "M 0 0 L 10 5 L 0 10 z") // Triangle
-        .style("fill", "#FF6347");
 
-    // Cross-Link Layer (Must be before nodes to appear behind)
-    g.append("g").attr("class", "cross-links-layer");
 
     tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
 
@@ -95,10 +64,7 @@ function ensureDescriptionField(node) {
     if (!node.description) {
         node.description = "";
     }
-    // Ensure ID for persistence (Feature B)
-    if (!node.id) {
-        node.id = 'node_' + Math.random().toString(36).substr(2, 9);
-    }
+
 
     if (node.children) {
         node.children.forEach(ensureDescriptionField);
@@ -138,64 +104,7 @@ function update(source) {
         d.y = d.targetY; // Use the y position calculated in calculateNodeLayout
     });
 
-    // ****************** Cross-Links section (Feature B) ***************************
-    // Render before nodes so they are behind
-    const crossLinkGroup = g.select('.cross-links-layer');
-    if (crossLinkGroup.empty()) {
-        // Fallback if not created in init (should not happen if initMap is run)
-        g.insert("g", ".node").attr("class", "cross-links-layer");
-    }
 
-    const crossLinkData = crossLinkGroup.selectAll('path.cross-link')
-        .data(crossLinks, d => d.id || (d.id = d.sourceId + "-" + d.targetId));
-
-    const crossLinkEnter = crossLinkData.enter().append('path')
-        .attr('class', 'cross-link')
-        .style("fill", "none")
-        .style("stroke", "#FF6347") // Tomato Red
-        .style("stroke-width", "1.5px")
-        .style("stroke-dasharray", "5, 5")
-        .attr("marker-end", "url(#marker-crosslink-arrow)")
-        .style("cursor", "pointer")
-        .on("dblclick", (event, d) => {
-            event.stopPropagation();
-            confirmDeleteCrossLink(d);
-        });
-
-    // Merge and Update Cross-Links
-    // We need to find the actual node objects for source and target to calculate positions
-    const nodeMap = new Map(nodes.map(n => [n.data.id || n.id, n])); // Map by ID
-
-    crossLinkData.merge(crossLinkEnter)
-        .transition().duration(duration)
-        .attr('d', d => {
-            // Find current positions of source and target nodes
-            // Note: d.sourceId and d.targetId are IDs from dataset
-            // We need to map them to the layout nodes.
-            // Issue: d3 nodes use auto-generated IDs 'id' if not provided. 
-            // We should ensure our nodes have stable IDs from data if possible, or use the object finding.
-            // Assumption: node objects have a unique ID that we store in crossLink.
-            // Since we don't have stable IDs in the provided code (d.id = ++i), we need to fix that or rely on object identity if we stored that.
-            // BUT, we stored strings {sourceId, targetId}.
-            // Fix: We need to use 'data.id' from the node data if available, or generate one.
-            // Current code: .data(nodes, d => d.id || (d.id = ++i));
-
-            // Let's assume we match by node object content or we ensure ID stability.
-            // Better approach for now: We will attach the live node selection to the crosslink creation.
-            // But valid persistence requires IDs. 
-            // LIMITATION: The current code generates IDs (d.id = ++i). This breaks persistence.
-            // We MUST assume 'rootData' has IDs or we generate IDs for `data` objects recursively.
-            // See helper `ensureIds(rootData)`.
-
-            const srcNode = nodes.find(n => n.data.id === d.sourceId);
-            const tgtNode = nodes.find(n => n.data.id === d.targetId);
-
-            if (!srcNode || !tgtNode) return null; // Node layout might have hidden them?
-
-            return calculateElbowPath(srcNode, tgtNode);
-        });
-
-    crossLinkData.exit().remove();
 
 
     // ****************** Nodes section ***************************
@@ -480,55 +389,8 @@ function syncCollapseState(node) {
 }
 
 function click(event, d) {
-    if (isLinkingMode) {
-        event.stopPropagation();
-
-        if (!sourceNode) {
-            // Select Source
-            sourceNode = d;
-
-            // Highlight Source (Green Dashed)
-            d3.select(event.currentTarget).select('.main-rect')
-                .style("stroke", "#00FF00")
-                .style("stroke-dasharray", "5, 5");
-
-        } else {
-            // Select Target or Cancel
-            if (sourceNode === d) {
-                // Clicked same node -> Cancel
-                exitLinkingMode();
-                return;
-            }
-
-            // Validate: No duplicates
-            const linkExists = crossLinks.some(l =>
-                (l.sourceId === sourceNode.data.id && l.targetId === d.data.id)
-            );
-
-            if (linkExists) {
-                openErrorModal("Link already exists!");
-                exitLinkingMode();
-                return;
-            }
-
-            // Validate: No self-loops (handled by equality check above actually)
-
-            // Create Link
-            crossLinks.push({
-                sourceId: sourceNode.data.id,
-                targetId: d.data.id
-            });
-
-            exitLinkingMode(); // Clears highlights and mode
-
-            // Update view
-            update(root);
-            saveMap();
-        }
-    } else {
-        // Normal behavior (optional center or select)
-        // Kept empty as per original
-    }
+    // Normal behavior (optional center or select)
+    // Kept empty as per original
 }
 
 // --- Actions ---
@@ -710,10 +572,7 @@ async function saveMap() {
     status.textContent = "Saving...";
 
     const success = await API.updateMap(MAP_ID, {
-        data: JSON.stringify({
-            root: rootData,
-            crossLinks: crossLinks
-        })
+        data: JSON.stringify(rootData)
     });
 
     if (success) {
@@ -734,41 +593,7 @@ function centerMap() {
     );
 }
 
-// --- Feature B: Cross-Links ---
 
-function toggleLinkingMode() {
-    isLinkingMode = !isLinkingMode;
-    const btn = document.getElementById('btn-crosslink');
-
-    if (isLinkingMode) {
-        btn.style.backgroundColor = '#e6fffa';
-        btn.style.borderColor = '#2ECC71';
-        document.getElementById('whiteboard').style.cursor = 'crosshair';
-        sourceNode = null; // Reset selection
-    } else {
-        exitLinkingMode();
-    }
-}
-
-function exitLinkingMode() {
-    isLinkingMode = false;
-    const btn = document.getElementById('btn-crosslink');
-    if (btn) {
-        btn.style.backgroundColor = '';
-        btn.style.borderColor = '#ddd';
-    }
-    document.getElementById('whiteboard').style.cursor = 'grab';
-
-    // Clear highlights
-    d3.selectAll('.main-rect')
-        .style("stroke-dasharray", null)
-        .style("stroke", null);
-
-    sourceNode = null;
-
-    // Re-apply standard styling (will accept update() call later usually, but good to force reset visual)
-    update(root);
-}
 
 // Add keyboard event handlers for modal
 document.addEventListener('DOMContentLoaded', () => {
@@ -917,138 +742,7 @@ function shiftSubtree(node, dy) {
 }
 
 
-// --- Feature B: Cross-Links Helpers ---
 
-function calculateElbowPath(src, tgt) {
-    // Calculate intersection points on perimeter
-    const srcPoint = getRectIntersection(src, tgt); // From Src center to Tgt center
-    const tgtPoint = getRectIntersection(tgt, src); // From Tgt center to Src center
-
-    const x1 = srcPoint.x;
-    const y1 = srcPoint.y;
-    const x2 = tgtPoint.x;
-    const y2 = tgtPoint.y;
-
-    // Simple Elbow Logic (Horizontal - Vertical - Horizontal)
-    const midX = (x1 + x2) / 2;
-
-    return `M ${y1} ${x1} 
-            L ${y1} ${midX} 
-            L ${y2} ${midX} 
-            L ${y2} ${x2}`;
-
-    // Wait, the coordinate system in the tree layout:
-    // d.x is vertical (row), d.y is horizontal (depth/column)
-    // The previous transform was translate(d.y, d.x)
-    // So X coord in SVG space is d.y (depth)
-    // Y coord in SVG space is d.x (vertical)
-
-    // Correct mapping for calculation:
-    // Node center in SVG: (d.y, d.x)
-    // Rect width: d.width, height: d.height
-
-    // Let's redefine getRectIntersection to work in SVG coordinates (x=depth, y=vertical)
-}
-
-function getRectIntersection(node, otherNode) {
-    // Node center (SVG coordinates)
-    const cx = node.y;
-    const cy = node.x;
-    const w = node.width;
-    const h = node.height;
-
-    const otherCx = otherNode.y;
-    const otherCy = otherNode.x;
-
-    const dx = otherCx - cx;
-    const dy = otherCy - cy;
-
-    if (dx === 0 && dy === 0) return { x: cx, y: cy };
-
-    // Angle to other node
-    // We want the point on the rectangle border (cx-w/2, cy-h/2, w, h)
-    // that intersects the line to (otherCx, otherCy)
-
-    // Simple approach: Check intersection with 4 sides
-    const left = cx - w / 2;
-    const right = cx + w / 2;
-    const top = cy - h / 2;
-    const bottom = cy + h / 2;
-
-    // Ray equations: P = C + t * D
-    // t_x_left = (left - cx) / dx
-    // t_x_right = (right - cx) / dx
-    // t_y_top = (top - cy) / dy
-    // t_y_bottom = (bottom - cy) / dy
-
-    let t = Infinity;
-
-    if (dx !== 0) {
-        const t1 = (left - cx) / dx;
-        if (t1 > 0) t = Math.min(t, t1);
-        const t2 = (right - cx) / dx;
-        if (t2 > 0) t = Math.min(t, t2);
-    }
-
-    if (dy !== 0) {
-        const t3 = (top - cy) / dy;
-        if (t3 > 0) t = Math.min(t, t3);
-        const t4 = (bottom - cy) / dy;
-        if (t4 > 0) t = Math.min(t, t4);
-    }
-
-    // Point
-    return {
-        x: cx + t * dx, // SVG X
-        y: cy + t * dy  // SVG Y
-    };
-}
-
-// Redefine calculateElbowPath with correct SVG coords
-// SVG Path "M x y" uses actual x,y
-function calculateElbowPath(src, tgt) {
-    const p1 = getRectIntersection(src, tgt);
-    const p2 = getRectIntersection(tgt, src);
-
-    // p1.x, p1.y are SVG coordinates
-
-    // Elbow logic:
-    // Move horizontal, then vertical, then horizontal?
-    // Or just horizontal then vertical?
-    // "Elbow (Right-Angle)" - usually means one bend or two.
-    // Given the tree flows left-to-right (mostly), horizontal mid-point makes sense.
-
-    const midX = (p1.x + p2.x) / 2;
-
-    return `M ${p1.x} ${p1.y} 
-            L ${midX} ${p1.y} 
-            L ${midX} ${p2.y} 
-            L ${p2.x} ${p2.y}`;
-}
-
-let deleteLinkData = null;
-
-function confirmDeleteCrossLink(d) {
-    deleteLinkData = d;
-    document.getElementById('deleteLinkConfirmModal').style.display = 'flex';
-}
-
-function closeDeleteLinkConfirmModal() {
-    document.getElementById('deleteLinkConfirmModal').style.display = 'none';
-    deleteLinkData = null;
-}
-
-function deleteCrossLink() {
-    if (!deleteLinkData) return;
-
-    const index = crossLinks.indexOf(deleteLinkData);
-    if (index > -1) {
-        crossLinks.splice(index, 1);
-        saveMap();
-        update(root);
-    }
-    closeDeleteLinkConfirmModal();
-}
 
 function wrapText(text, maxChars) {
     if (!text) return [""];
