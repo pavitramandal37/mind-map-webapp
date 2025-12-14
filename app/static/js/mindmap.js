@@ -7,6 +7,7 @@ let undoStack = [];
 let redoStack = [];
 let currentNode = null; // For editing
 
+
 // Initialize D3
 document.addEventListener('DOMContentLoaded', async () => {
     const mapData = await API.getMap(MAP_ID);
@@ -16,10 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        rootData = JSON.parse(mapData.data);
+        const loadedData = JSON.parse(mapData.data);
+        rootData = loadedData;
+
         // Ensure description field exists for all nodes
         ensureDescriptionField(rootData);
     } catch (e) {
+        console.error("Error parsing map data:", e);
         rootData = { name: mapData.title, description: "", children: [] };
     }
 
@@ -36,10 +40,12 @@ function initMap() {
         .call(d3.zoom().on("zoom", (event) => {
             g.attr("transform", event.transform);
         }))
-        .on("dblclick.zoom", null); // Disable double click zoom
+        .on("dblclick.zoom", null) // Disable double click zoom
+        .on("click", null);
 
-    g = svg.append("g")
-        .attr("transform", `translate(${width / 2},${height / 2})`);
+    g = svg.append("g");
+
+
 
     tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
 
@@ -58,8 +64,14 @@ function ensureDescriptionField(node) {
     if (!node.description) {
         node.description = "";
     }
+
+
     if (node.children) {
         node.children.forEach(ensureDescriptionField);
+    }
+    // Also check hidden children
+    if (node._children) {
+        node._children.forEach(ensureDescriptionField);
     }
 }
 
@@ -72,10 +84,16 @@ function collapse(d) {
 }
 
 function update(source) {
+    // Verify Data Consistency before Layout
+    syncCollapseState(root);
+
     // Calculate node dimensions and positions before rendering
     calculateNodeLayout(root);
 
     const treeData = tree(root);
+
+    // Adjust specific spacing to prevent overlaps (Fix #2 & #3)
+    adjustNodeSpacing(root);
 
     // Compute the new tree layout.
     const nodes = treeData.descendants();
@@ -85,6 +103,9 @@ function update(source) {
     nodes.forEach(d => {
         d.y = d.targetY; // Use the y position calculated in calculateNodeLayout
     });
+
+
+
 
     // ****************** Nodes section ***************************
 
@@ -160,7 +181,7 @@ function update(source) {
         .attr('stroke-width', 2);
 
     expandBtnGroup.append('image')
-        .attr('href', d => d.children ? '/static/icons/compress.png' : '/static/icons/expand.png')
+        .attr('href', d => !d.data.isCollapsed ? '/static/icons/compress.png' : '/static/icons/expand.png')
         .attr('x', -8)
         .attr('y', -8)
         .attr('width', 16)
@@ -216,7 +237,7 @@ function update(source) {
         })
         .style("stroke-width", d => {
             if (d.data.name === rootData.name) return "3px";
-            if (d._children) return "2.5px"; // Thicker for collapsed nodes
+            if (d.data.isCollapsed) return "2.5px"; // Thicker for collapsed nodes
             return "2px";
         })
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))");
@@ -281,7 +302,7 @@ function update(source) {
 
     nodeUpdate.filter(d => d.children || d._children).each(function (d) {
         d3.select(this).selectAll('.expand-btn image')
-            .attr('href', d.children ? '/static/icons/compress.png' : '/static/icons/expand.png');
+            .attr('href', d => !d.data.isCollapsed ? '/static/icons/compress.png' : '/static/icons/expand.png');
     });
 
     // Update Add Button position
@@ -342,17 +363,34 @@ function diagonal(s, d) {
 }
 
 function toggleChildren(d) {
-    if (d.children) {
-        d._children = d.children;
-        d.children = null;
-    } else {
-        d.children = d._children;
-        d._children = null;
+    if (d.data.children && d.data.children.length > 0) {
+        d.data.isCollapsed = !d.data.isCollapsed;
+        saveMap();
     }
 }
 
+// Ensure hierarchy structure matches data.isCollapsed state
+function syncCollapseState(node) {
+    node.descendants().forEach(d => {
+        if (d.data.isCollapsed) {
+            // Should be collapsed
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            }
+        } else {
+            // Should be expanded
+            if (d._children) {
+                d.children = d._children;
+                d._children = null;
+            }
+        }
+    });
+}
+
 function click(event, d) {
-    // Optional: Center on click or just select
+    // Normal behavior (optional center or select)
+    // Kept empty as per original
 }
 
 // --- Actions ---
@@ -547,11 +585,15 @@ async function saveMap() {
 }
 
 function centerMap() {
+    const centerX = window.innerWidth / 2;
+    const centerY = (window.innerHeight - 60) / 2;
     svg.transition().duration(750).call(
         d3.zoom().transform,
-        d3.zoomIdentity.translate(window.innerWidth / 2 - 100, window.innerHeight / 2).scale(1)
+        d3.zoomIdentity.translate(centerX, centerY).scale(1)
     );
 }
+
+
 
 // Add keyboard event handlers for modal
 document.addEventListener('DOMContentLoaded', () => {
@@ -631,22 +673,93 @@ function calculateNodeLayout(rootNode) {
     });
 }
 
-function wrapText(text, maxChars) {
-    if (text.length <= maxChars) return [text];
+function calculateSubtreeBounds(node) {
+    let top = node.x;
+    let bottom = node.x;
 
-    const words = text.split(' ');
-    const lines = [];
+    if (node.children) {
+        node.children.forEach(child => {
+            const childBounds = calculateSubtreeBounds(child);
+            if (childBounds.top < top) top = childBounds.top;
+            if (childBounds.bottom > bottom) bottom = childBounds.bottom;
+        });
+    }
+
+    return { top, bottom };
+}
+
+function adjustNodeSpacing(node) {
+    if (!node.children || node.children.length === 0) return;
+
+    // Process children first (post-order traversal)
+    node.children.forEach(adjustNodeSpacing);
+
+    // Sort children by vertical position (x)
+    node.children.sort((a, b) => a.x - b.x);
+
+    const MIN_NODE_GAP = 40;
+
+    for (let i = 0; i < node.children.length - 1; i++) {
+        const child1 = node.children[i];
+        const child2 = node.children[i + 1];
+
+        // Bounds of the subtrees (visual extent)
+        // We really care about the bottom of child1's tree vs top of child2's tree
+        const bounds1 = calculateSubtreeBounds(child1);
+        const bounds2 = calculateSubtreeBounds(child2);
+
+        // However, standard d3.tree layout does a good job of separating subtrees.
+        // The issue is mostly with the adjacent nodes themselves when heights are variable.
+        // Or if d3.tree fixed spacing is too tight for the custom content height.
+
+        // Let's ensure the gap between the actual nodes is respected.
+        // AND the gap between the subtrees.
+
+        // Gap required based on node heights:
+        const requiredDist = (child1.height / 2) + MIN_NODE_GAP + (child2.height / 2);
+        const currentDist = child2.x - child1.x;
+
+        let shift = 0;
+        if (currentDist < requiredDist) {
+            shift = requiredDist - currentDist;
+        }
+
+        // Apply shift to child2 and all following siblings
+        if (shift > 0) {
+            for (let j = i + 1; j < node.children.length; j++) {
+                const sibling = node.children[j];
+                shiftSubtree(sibling, shift);
+            }
+        }
+    }
+}
+
+function shiftSubtree(node, dy) {
+    node.x += dy;
+    if (node.children) {
+        node.children.forEach(child => shiftSubtree(child, dy));
+    }
+}
+
+
+
+
+function wrapText(text, maxChars) {
+    if (!text) return [""];
+    const words = text.split(/\s+/);
+    let lines = [];
     let currentLine = words[0];
 
     for (let i = 1; i < words.length; i++) {
-        if (currentLine.length + 1 + words[i].length <= maxChars) {
-            currentLine += " " + words[i];
+        const word = words[i];
+        if (currentLine.length + 1 + word.length <= maxChars) {
+            currentLine += " " + word;
         } else {
             lines.push(currentLine);
-            currentLine = words[i];
+            currentLine = word;
         }
     }
     lines.push(currentLine);
-
     return lines;
 }
+
