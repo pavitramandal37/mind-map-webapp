@@ -30,23 +30,23 @@ This is a **full-stack web application** for creating and managing interactive m
 **How it's built:**
 ```
 ┌─────────────────────────────────────────────────┐
-│  Frontend (Browser)                              │
-│  - HTML templates (Jinja2)                       │
-│  - JavaScript (D3.js for visualization)          │
-│  - CSS for styling                               │
+│  Frontend (Browser)                             │
+│  - HTML templates (Jinja2)                      │
+│  - JavaScript (D3.js for visualization)         │
+│  - CSS for styling                              │
 └──────────────┬──────────────────────────────────┘
                │ HTTP/HTTPS + JWT tokens
 ┌──────────────▼──────────────────────────────────┐
-│  Backend API (FastAPI)                           │
-│  - REST endpoints (/api/maps, /auth)             │
-│  - JWT authentication                            │
-│  - Business logic                                │
+│  Backend API (FastAPI)                          │
+│  - REST endpoints (/api/maps, /auth)            │
+│  - JWT authentication                           │
+│  - Business logic                               │
 └──────────────┬──────────────────────────────────┘
                │ SQL queries
 ┌──────────────▼──────────────────────────────────┐
-│  Database (SQLite/PostgreSQL)                    │
-│  - Users table                                   │
-│  - MindMaps table                                │
+│  Database (SQLite/PostgreSQL)                   │
+│  - Users table                                  │
+│  - MindMaps table                               │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -489,7 +489,7 @@ Server-side HTML generation using Jinja2:
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  Toolbar                                                 │
-│  [Save] [Undo] [Redo] [Center Map] [Expand/Collapse]    │
+│  [Save] [Undo] [Redo] [Center Map] [Expand/Collapse]     │
 └──────────────────────────────────────────────────────────┘
 ┌──────────────────────────────────────────────────────────┐
 │  SVG Canvas (D3.js visualization)                        │
@@ -500,7 +500,7 @@ Server-side HTML generation using Jinja2:
 │              │                                           │
 │       ┌──────┴──────┐                                    │
 │       │             │                                    │
-│  ┌────▼───┐   ┌────▼───┐                                │
+│  ┌────▼───┐   ┌────▼───┐                                 │
 │  │ Child 1│   │ Child 2│                                 │
 │  └────────┘   └────┬───┘                                 │
 │                    │                                     │
@@ -535,11 +535,11 @@ Server-side HTML generation using Jinja2:
 ┌────────────────────────────────────────────────────────┐
 │  Mind Map Grid                                         │
 │                                                        │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
-│  │   [+]   │  │ Project │  │  Study  │  │ Travel  │  │
-│  │ Create  │  │  Ideas  │  │  Notes  │  │  Plans  │  │
-│  │   New   │  └─────────┘  └─────────┘  └─────────┘  │
-│  └─────────┘     [Edit] [Copy] [Delete]               │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐    │
+│  │   [+]   │  │ Project │  │  Study  │  │ Travel  │    │
+│  │ Create  │  │  Ideas  │  │  Notes  │  │  Plans  │    │
+│  │   New   │  └─────────┘  └─────────┘  └─────────┘    │
+│  └─────────┘     [Edit] [Copy] [Delete]                │
 └────────────────────────────────────────────────────────┘
 ```
 
