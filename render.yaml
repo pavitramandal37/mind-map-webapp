@@ -1,16 +1,14 @@
 services:
-  # Web Service
+  # Web Service - Staging
   - type: web
-    name: mindmap-webapp
+    name: mindmap-webapp-staging
     runtime: python
     plan: free
-    buildCommand: |
-      pip install -r requirements.txt
-      python -c "from app.database import Base, engine; Base.metadata.create_all(bind=engine)"
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ENVIRONMENT
-        value: production
+        value: staging
       - key: SECRET_KEY
         generateValue: true
       - key: ALGORITHM
@@ -19,10 +17,10 @@ services:
         value: 30
       - key: DATABASE_URL
         fromDatabase:
-          name: mindmap-db
+          name: mindmap-db-staging
           property: connectionString
       - key: CORS_ORIGINS
-        value: '["https://mindmap-webapp.onrender.com","http://localhost:8000"]'
+        value: https://mindmap-webapp-staging.onrender.com,http://localhost:8000
       - key: RATE_LIMIT_PER_MINUTE
         value: 60
       - key: LOGIN_RATE_LIMIT
@@ -32,11 +30,11 @@ services:
       - key: MIN_PASSWORD_LENGTH
         value: 8
       - key: DEBUG
-        value: "false"
+        value: "true"
     healthCheckPath: /health
 
 databases:
-  - name: mindmap-db
-    databaseName: mindmap
-    user: mindmap
+  - name: mindmap-db-staging
+    databaseName: mindmap_staging
+    user: mindmap_staging
     plan: free
