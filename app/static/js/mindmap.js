@@ -43,9 +43,12 @@ function initMap() {
         .on("dblclick.zoom", null) // Disable double click zoom
         .on("click", null);
 
-    g = svg.append("g");
+    // FIX: Add initial transform to center the map
+    const centerX = width / 2;
+    const centerY = (height - 60) / 2;
 
-
+    g = svg.append("g")
+        .attr("transform", `translate(${centerX},${centerY})`);
 
     tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
 
@@ -57,7 +60,7 @@ function initMap() {
     // root.children.forEach(collapse);
 
     update(root);
-    centerMap();
+    // centerMap(); // Removed as per fix
 }
 
 function ensureDescriptionField(node) {
