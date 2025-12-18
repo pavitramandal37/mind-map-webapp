@@ -33,34 +33,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 function initMap() {
     const width = window.innerWidth;
     const height = window.innerHeight - 60;
+    const centerX = width / 2;
+    const centerY = (height - 60) / 2;
+
+    // Create zoom behavior first
+    const zoomBehavior = d3.zoom()
+        .scaleExtent([0.1, 3])  // Min/max zoom levels
+        .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+        });
 
     svg = d3.select("#whiteboard").append("svg")
         .attr("width", width)
         .attr("height", height)
-        .call(d3.zoom().on("zoom", (event) => {
-            g.attr("transform", event.transform);
-        }))
-        .on("dblclick.zoom", null) // Disable double click zoom
+        .call(zoomBehavior)  // Apply zoom behavior
+        .on("dblclick.zoom", null)
         .on("click", null);
 
-    // FIX: Add initial transform to center the map
-    const centerX = width / 2;
-    const centerY = (height - 60) / 2;
+    g = svg.append("g");
 
-    g = svg.append("g")
-        .attr("transform", `translate(${centerX},${centerY})`);
-
-    tree = d3.tree().nodeSize([120, 200]); // Height, Width spacing
+    tree = d3.tree().nodeSize([120, 200]);
 
     root = d3.hierarchy(rootData, d => d.children);
     root.x0 = 0;
     root.y0 = 0;
 
-    // Collapse after the second level by default
-    // root.children.forEach(collapse);
-
     update(root);
-    // centerMap(); // Removed as per fix
+
+    // FIX: Set initial zoom transform (tells D3 about the centering)
+    svg.call(
+        zoomBehavior.transform,
+        d3.zoomIdentity.translate(centerX, centerY).scale(1)
+    );
 }
 
 function ensureDescriptionField(node) {
