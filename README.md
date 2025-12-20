@@ -73,4 +73,3 @@ This application is configured to use a **persistent database** located outside 
 
 1.  **Sign Up**: Create a new account. Your data will be saved to the persistent database.
 2.  **Create Mind Maps**: Use the intuitive interface to create and manage your ideas.
-3.  **Persistence**: You can now delete this project folder or re-clone it anytime. As long as you point your `.env` to the same `DATABASE_URL`, all your data will be there!
