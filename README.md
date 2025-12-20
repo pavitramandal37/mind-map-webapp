@@ -44,11 +44,8 @@ This application is configured to use a **persistent database** located outside 
     # Automatic Database creation:
     # DATABASE_URL=sqlite:///./db/mindmap.db
 
-    # To use Persistent Database we have to create/give the path in the local PC
-    # DATABASE_URL=sqlite:///{enter the path}/mindmap.db
-
     ```
-    *Note: If using an absolute path (like D:/...), ensure the directory exists before running the app.*
+    *Note: for lcoal development uses the SQLite database but for production uses the PostgreSQL database*
 
 3.  **Secure your app**:
     Update the `SECRET_KEY` in `.env`. You can generate one with:

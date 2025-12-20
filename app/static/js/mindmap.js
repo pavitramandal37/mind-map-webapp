@@ -648,7 +648,7 @@ function calculateNodeLayout(rootNode) {
     const MIN_WIDTH = 140;
     const MAX_WIDTH = 240;
     const BASE_HEIGHT = 50;
-    const PADDING = 20;
+    const PADDING = 30;
     const CHAR_WIDTH = 6; // Approx for 14px font
     const LINE_HEIGHT = 20;
 
