@@ -201,6 +201,7 @@
             </div>
         </div>
 
+
         <!-- Edit Mode -->
         <div id="editMode" style="display: none;">
             <div class="form-group">
@@ -209,7 +210,15 @@
             </div>
             <div class="form-group">
                 <label>Description</label>
-                <textarea id="nodeDescriptionInput" class="form-control" rows="3"></textarea>
+                <div class="rich-text-container">
+                    <div class="rich-text-toolbar">
+                        <button type="button" class="format-btn" data-command="bold" title="Bold"><b>B</b></button>
+                        <button type="button" class="format-btn" data-command="italic" title="Italic"><i>I</i></button>
+                        <button type="button" class="format-btn" data-command="underline" title="Underline"><u>U</u></button>
+                        <button type="button" class="format-btn" data-command="strikeThrough" title="Strike"><s>S</s></button>
+                    </div>
+                    <div id="nodeDescriptionInput" class="form-control rich-text-editor" contenteditable="true"></div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-danger" onclick="openDeleteConfirmModal()">Delete</button>
@@ -218,6 +227,55 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Rich Text Editor Styles */
+    .rich-text-container {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .rich-text-toolbar {
+        background: #f8f9fa;
+        border-bottom: 1px solid #ced4da;
+        padding: 5px;
+        display: flex;
+        gap: 5px;
+    }
+
+    .format-btn {
+        background: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 14px;
+        color: #495057;
+    }
+
+    .format-btn:hover {
+        background: #e2e6ea;
+        border-color: #dae0e5;
+    }
+
+    .format-btn.active {
+        background: #e2e6ea;
+        border-color: #ced4da;
+    }
+
+    .rich-text-editor {
+        min-height: 100px;
+        padding: 10px;
+        overflow-y: auto;
+        outline: none;
+        border: none; /* Border handled by container */
+    }
+    
+    .rich-text-editor:focus {
+        box-shadow: none; /* Remove default form-control shadow if any */
+    }
+</style>
 
 <!-- Delete Node Confirmation Modal -->
 <div id="deleteNodeConfirmModal" class="modal">

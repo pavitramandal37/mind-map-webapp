@@ -295,12 +295,14 @@ function update(source) {
             .text(d => {
                 if (!d.hasDescription) return "";
                 const desc = d.data.description.trim();
+                // Strip HTML tags for preview
+                const plainText = desc.replace(/<[^>]*>/g, '');
                 // Truncate to one line with ellipsis
                 const maxChars = Math.floor((d.width - 20) / 6.5); // Approx char width for 11px font
-                if (desc.length > maxChars) {
-                    return desc.substring(0, maxChars - 1).trim() + "…";
+                if (plainText.length > maxChars) {
+                    return plainText.substring(0, maxChars - 1).trim() + "…";
                 }
-                return desc;
+                return plainText;
             })
             .attr('x', 0)
             .attr('y', d => {
@@ -491,7 +493,7 @@ function openEditModal(d) {
 
     // Populate view mode
     document.getElementById('nodeTitleDisplay').textContent = d.data.name || '';
-    document.getElementById('nodeDescriptionDisplay').textContent = d.data.description || '(No description)';
+    document.getElementById('nodeDescriptionDisplay').innerHTML = d.data.description || '(No description)';
 
     document.getElementById('editModal').style.display = 'flex';
 }
@@ -505,7 +507,7 @@ function enterEditMode() {
 
     // Populate edit fields
     document.getElementById('nodeTitleInput').value = currentNode.data.name || '';
-    document.getElementById('nodeDescriptionInput').value = currentNode.data.description || '';
+    document.getElementById('nodeDescriptionInput').innerHTML = currentNode.data.description || '';
 
     // Focus on title input
     document.getElementById('nodeTitleInput').focus();
@@ -526,7 +528,7 @@ function saveNodeEdit() {
 
     pushToUndo();
     const newName = document.getElementById('nodeTitleInput').value.trim();
-    const newDescription = document.getElementById('nodeDescriptionInput').value.trim();
+    const newDescription = document.getElementById('nodeDescriptionInput').innerHTML.trim();
 
     if (!newName) {
         openErrorModal('Title cannot be empty');
@@ -633,13 +635,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         const editMode = document.getElementById('editMode');
         if (editMode && editMode.style.display !== 'none') {
-            if (e.key === 'Enter' && (e.target.id === 'nodeTitleInput' || e.target.id === 'nodeDescriptionInput')) {
+            if (e.key === 'Enter' && e.target.id === 'nodeTitleInput') {
                 e.preventDefault();
                 saveNodeEdit();
             }
-            // Tab key navigation is handled by browser default
+            // For description (contenteditable), let browser handle Enter (new line) and Shift+Enter
         }
     });
+
+    // Rich Text Toolbar Buttons
+    const toolbar = document.querySelector('.rich-text-toolbar');
+    if (toolbar) {
+        toolbar.addEventListener('click', (e) => {
+            if (e.target.closest('.format-btn')) {
+                const btn = e.target.closest('.format-btn');
+                const command = btn.getAttribute('data-command');
+                document.execCommand(command, false, null);
+
+                // Toggle active state visualization (simplified)
+                btn.classList.toggle('active');
+
+                // Keep focus in editor
+                document.getElementById('nodeDescriptionInput').focus();
+            }
+        });
+    }
 });
 
 // --- Layout Helpers ---
@@ -680,8 +700,9 @@ function calculateNodeLayout(rootNode) {
 
         d.titleLines = wrapText(title, approxCharsPerLine);
 
-        // Check description
-        d.hasDescription = d.data.description && d.data.description.trim().length > 0;
+        // Check description (strip HTML first)
+        const plainDesc = (d.data.description || "").replace(/<[^>]*>/g, '').trim();
+        d.hasDescription = plainDesc.length > 0;
 
         // Calculate Height
         let contentHeight = d.titleLines.length * LINE_HEIGHT;
