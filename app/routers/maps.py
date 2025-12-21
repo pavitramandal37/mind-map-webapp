@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, database, auth, schemas
+from ..utils import sanitize_html  # NEW IMPORT
 import json
 import logging
 
@@ -21,16 +22,53 @@ def get_maps(db: Session = Depends(database.get_db), current_user: models.User =
         logger.error(f"Error fetching maps for user {current_user.email}: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching mind maps")
 
+
+def sanitize_mindmap_data(data_str: str) -> str:
+    """
+    Recursively sanitize all descriptions in mind map data.
+    
+    Args:
+        data_str: JSON string of mind map data
+    
+    Returns:
+        Sanitized JSON string
+    """
+    try:
+        data = json.loads(data_str)
+        sanitized_data = _sanitize_node(data)
+        return json.dumps(sanitized_data)
+    except Exception as e:
+        logger.error(f"Error sanitizing mind map data: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid mind map data structure")
+
+
+def _sanitize_node(node: dict) -> dict:
+    """Recursively sanitize a single node and its children."""
+    # Sanitize description if present
+    if 'description' in node and node['description']:
+        try:
+            node['description'] = sanitize_html(node['description'])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    # Recursively sanitize children
+    if 'children' in node and isinstance(node['children'], list):
+        node['children'] = [_sanitize_node(child) for child in node['children']]
+    
+    return node
+
 @router.post("/", response_model=schemas.MindMapResponse)
 def create_map(map: schemas.MindMapCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     try:
-        # Validate JSON structure
-        try:
-            json.loads(map.data)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON data for mind map")
-
-        new_map = models.MindMap(**map.model_dump(), user_id=current_user.id)
+        # Validate JSON structure (already done by schema)
+        # Sanitize all descriptions in the data
+        sanitized_data = sanitize_mindmap_data(map.data)
+        
+        new_map = models.MindMap(
+            title=map.title,
+            data=sanitized_data,  # Use sanitized data
+            user_id=current_user.id
+        )
         db.add(new_map)
         db.commit()
         db.refresh(new_map)
@@ -70,13 +108,10 @@ def update_map(map_id: int, map_update: schemas.MindMapUpdate, db: Session = Dep
         if not map_item:
             raise HTTPException(status_code=404, detail="Mind Map not found")
 
-        # Validate JSON if data is being updated
+        # Sanitize data if being updated
         if map_update.data is not None:
-            try:
-                json.loads(map_update.data)
-            except json.JSONDecodeError:
-                raise HTTPException(status_code=400, detail="Invalid JSON data for mind map")
-            map_item.data = map_update.data
+            sanitized_data = sanitize_mindmap_data(map_update.data)
+            map_item.data = sanitized_data
 
         if map_update.title is not None:
             map_item.title = map_update.title
@@ -126,9 +161,10 @@ def copy_map(map_id: int, db: Session = Depends(database.get_db), current_user: 
             raise HTTPException(status_code=404, detail="Mind Map not found")
 
         new_title = f"copy-{original_map.title}"
+        sanitized_data = sanitize_mindmap_data(original_map.data)
         new_map = models.MindMap(
             title=new_title,
-            data=original_map.data,
+            data=sanitized_data,
             user_id=current_user.id
         )
         db.add(new_map)

@@ -4,6 +4,8 @@
 
 {% block head %}
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<!-- Add DOMPurify for HTML sanitization -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <style>
     body {
         overflow: hidden;
@@ -201,6 +203,7 @@
             </div>
         </div>
 
+
         <!-- Edit Mode -->
         <div id="editMode" style="display: none;">
             <div class="form-group">
@@ -208,8 +211,32 @@
                 <input type="text" id="nodeTitleInput" class="form-control">
             </div>
             <div class="form-group">
-                <label>Description</label>
-                <textarea id="nodeDescriptionInput" class="form-control" rows="3"></textarea>
+                <label>
+                    Description
+                    <span id="charCount" style="float: right; font-size: 12px; color: #999;">0 / 5000</span>
+                </label>
+                <div class="rich-text-container">
+                    <div class="rich-text-toolbar">
+                        <button type="button" class="format-btn" data-command="bold" title="Bold (Ctrl+B)"
+                            aria-label="Bold">
+                            <b>B</b>
+                        </button>
+                        <button type="button" class="format-btn" data-command="italic" title="Italic (Ctrl+I)"
+                            aria-label="Italic">
+                            <i>I</i>
+                        </button>
+                        <button type="button" class="format-btn" data-command="underline" title="Underline (Ctrl+U)"
+                            aria-label="Underline">
+                            <u>U</u>
+                        </button>
+                        <button type="button" class="format-btn" data-command="strikeThrough" title="Strikethrough"
+                            aria-label="Strikethrough">
+                            <s>S</s>
+                        </button>
+                    </div>
+                    <div id="nodeDescriptionInput" class="form-control rich-text-editor" contenteditable="true"
+                        role="textbox" aria-label="Node description" aria-multiline="true"></div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-danger" onclick="openDeleteConfirmModal()">Delete</button>
@@ -218,6 +245,115 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Rich Text Editor Styles */
+    .rich-text-container {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .rich-text-toolbar {
+        background: #f8f9fa;
+        border-bottom: 1px solid #ced4da;
+        padding: 5px;
+        display: flex;
+        gap: 5px;
+    }
+
+    .format-btn {
+        background: #fff;
+        border: 1px solid transparent;
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 3px;
+        font-size: 14px;
+        color: #495057;
+        transition: all 0.2s ease;
+        min-width: 32px;
+    }
+
+    .format-btn:hover {
+        background: #e2e6ea;
+        border-color: #dae0e5;
+    }
+
+    .format-btn:active,
+    .format-btn.active {
+        background: #d4d8dd;
+        border-color: #ced4da;
+        transform: scale(0.95);
+    }
+
+    .rich-text-editor {
+        min-height: 120px;
+        max-height: 300px;
+        padding: 12px;
+        overflow-y: auto;
+        outline: none;
+        border: none;
+        line-height: 1.5;
+        font-family: inherit;
+    }
+
+    .rich-text-editor:focus {
+        box-shadow: none;
+        background: #fafbfc;
+    }
+
+    /* Styling for formatted text in editor */
+    .rich-text-editor b,
+    .rich-text-editor strong {
+        font-weight: bold;
+    }
+
+    .rich-text-editor i,
+    .rich-text-editor em {
+        font-style: italic;
+    }
+
+    .rich-text-editor u {
+        text-decoration: underline;
+    }
+
+    .rich-text-editor s {
+        text-decoration: line-through;
+    }
+
+    /* Empty state */
+    .rich-text-editor:empty:before {
+        content: 'Add a description...';
+        color: #adb5bd;
+        font-style: italic;
+    }
+
+    /* Styling for formatted text in view mode */
+    #nodeDescriptionDisplay b,
+    #nodeDescriptionDisplay strong {
+        font-weight: bold;
+    }
+
+    #nodeDescriptionDisplay i,
+    #nodeDescriptionDisplay em {
+        font-style: italic;
+    }
+
+    #nodeDescriptionDisplay u {
+        text-decoration: underline;
+    }
+
+    #nodeDescriptionDisplay s {
+        text-decoration: line-through;
+    }
+
+    /* Character counter warning states */
+    #charCount {
+        transition: color 0.2s ease;
+        font-weight: 500;
+    }
+</style>
 
 <!-- Delete Node Confirmation Modal -->
 <div id="deleteNodeConfirmModal" class="modal">
