@@ -4,6 +4,8 @@
 
 {% block head %}
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<!-- Add DOMPurify for HTML sanitization -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <style>
     body {
         overflow: hidden;
@@ -209,15 +211,31 @@
                 <input type="text" id="nodeTitleInput" class="form-control">
             </div>
             <div class="form-group">
-                <label>Description</label>
+                <label>
+                    Description
+                    <span id="charCount" style="float: right; font-size: 12px; color: #999;">0 / 5000</span>
+                </label>
                 <div class="rich-text-container">
                     <div class="rich-text-toolbar">
-                        <button type="button" class="format-btn" data-command="bold" title="Bold"><b>B</b></button>
-                        <button type="button" class="format-btn" data-command="italic" title="Italic"><i>I</i></button>
-                        <button type="button" class="format-btn" data-command="underline" title="Underline"><u>U</u></button>
-                        <button type="button" class="format-btn" data-command="strikeThrough" title="Strike"><s>S</s></button>
+                        <button type="button" class="format-btn" data-command="bold" title="Bold (Ctrl+B)"
+                            aria-label="Bold">
+                            <b>B</b>
+                        </button>
+                        <button type="button" class="format-btn" data-command="italic" title="Italic (Ctrl+I)"
+                            aria-label="Italic">
+                            <i>I</i>
+                        </button>
+                        <button type="button" class="format-btn" data-command="underline" title="Underline (Ctrl+U)"
+                            aria-label="Underline">
+                            <u>U</u>
+                        </button>
+                        <button type="button" class="format-btn" data-command="strikeThrough" title="Strikethrough"
+                            aria-label="Strikethrough">
+                            <s>S</s>
+                        </button>
                     </div>
-                    <div id="nodeDescriptionInput" class="form-control rich-text-editor" contenteditable="true"></div>
+                    <div id="nodeDescriptionInput" class="form-control rich-text-editor" contenteditable="true"
+                        role="textbox" aria-label="Node description" aria-multiline="true"></div>
                 </div>
             </div>
             <div class="modal-actions">
@@ -234,6 +252,7 @@
         border: 1px solid #ced4da;
         border-radius: 4px;
         overflow: hidden;
+        background: #fff;
     }
 
     .rich-text-toolbar {
@@ -245,13 +264,15 @@
     }
 
     .format-btn {
-        background: none;
+        background: #fff;
         border: 1px solid transparent;
         cursor: pointer;
-        padding: 4px 8px;
+        padding: 6px 10px;
         border-radius: 3px;
         font-size: 14px;
         color: #495057;
+        transition: all 0.2s ease;
+        min-width: 32px;
     }
 
     .format-btn:hover {
@@ -259,21 +280,78 @@
         border-color: #dae0e5;
     }
 
+    .format-btn:active,
     .format-btn.active {
-        background: #e2e6ea;
+        background: #d4d8dd;
         border-color: #ced4da;
+        transform: scale(0.95);
     }
 
     .rich-text-editor {
-        min-height: 100px;
-        padding: 10px;
+        min-height: 120px;
+        max-height: 300px;
+        padding: 12px;
         overflow-y: auto;
         outline: none;
-        border: none; /* Border handled by container */
+        border: none;
+        line-height: 1.5;
+        font-family: inherit;
     }
-    
+
     .rich-text-editor:focus {
-        box-shadow: none; /* Remove default form-control shadow if any */
+        box-shadow: none;
+        background: #fafbfc;
+    }
+
+    /* Styling for formatted text in editor */
+    .rich-text-editor b,
+    .rich-text-editor strong {
+        font-weight: bold;
+    }
+
+    .rich-text-editor i,
+    .rich-text-editor em {
+        font-style: italic;
+    }
+
+    .rich-text-editor u {
+        text-decoration: underline;
+    }
+
+    .rich-text-editor s {
+        text-decoration: line-through;
+    }
+
+    /* Empty state */
+    .rich-text-editor:empty:before {
+        content: 'Add a description...';
+        color: #adb5bd;
+        font-style: italic;
+    }
+
+    /* Styling for formatted text in view mode */
+    #nodeDescriptionDisplay b,
+    #nodeDescriptionDisplay strong {
+        font-weight: bold;
+    }
+
+    #nodeDescriptionDisplay i,
+    #nodeDescriptionDisplay em {
+        font-style: italic;
+    }
+
+    #nodeDescriptionDisplay u {
+        text-decoration: underline;
+    }
+
+    #nodeDescriptionDisplay s {
+        text-decoration: line-through;
+    }
+
+    /* Character counter warning states */
+    #charCount {
+        transition: color 0.2s ease;
+        font-weight: 500;
     }
 </style>
 

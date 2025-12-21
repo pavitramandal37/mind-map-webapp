@@ -31,6 +31,27 @@ A modern, interactive mind mapping web application built with Python (FastAPI) a
 
 This application is configured to use a **persistent database** located outside the project folder. This ensures you don't lose your data when re-cloning the repository.
 
+- **Rich Text Editor**: Secure, sanitized rich text descriptions for nodes.
+- **Export/Import**: Save and load your mind maps locally.
+- **Auto-Save**: Changes are automatically saved as you work.
+
+## Security Features
+
+### Rich Text Sanitization
+- **Client-side**: DOMPurify sanitizes HTML before saving
+- **Server-side**: Bleach library provides second layer of defense
+- **Allowed tags**: `<b>`, `<i>`, `<u>`, `<s>`, `<strong>`, `<em>`, `<br>`
+- **Max length**: 5000 characters per description
+
+### XSS Prevention
+All user-generated HTML content is sanitized to prevent:
+- Script injection
+- Event handler attacks
+- Malicious iframes
+- Style-based attacks
+
+## Tech Stack
+
 1.  **Create your `.env` file**:
     ```bash
     cp .env.example .env

@@ -491,9 +491,22 @@ function openEditModal(d) {
     document.getElementById('viewMode').style.display = 'block';
     document.getElementById('editMode').style.display = 'none';
 
-    // Populate view mode
+    // Populate view mode - NOW RENDERS HTML SAFELY
     document.getElementById('nodeTitleDisplay').textContent = d.data.name || '';
-    document.getElementById('nodeDescriptionDisplay').innerHTML = d.data.description || '(No description)';
+
+    // Use innerHTML to render formatted text (already sanitized from backend)
+    const descDisplay = document.getElementById('nodeDescriptionDisplay');
+    descDisplay.innerHTML = d.data.description || '(No description)';
+
+    // If empty, show placeholder
+    if (!d.data.description || d.data.description.trim() === '') {
+        descDisplay.textContent = '(No description)';
+        descDisplay.style.fontStyle = 'italic';
+        descDisplay.style.color = '#999';
+    } else {
+        descDisplay.style.fontStyle = 'normal';
+        descDisplay.style.color = '#333';
+    }
 
     document.getElementById('editModal').style.display = 'flex';
 }
@@ -509,9 +522,39 @@ function enterEditMode() {
     document.getElementById('nodeTitleInput').value = currentNode.data.name || '';
     document.getElementById('nodeDescriptionInput').innerHTML = currentNode.data.description || '';
 
+    // Update character count
+    updateCharCount();
+
+    // Add input listener for live character count
+    const editor = document.getElementById('nodeDescriptionInput');
+    editor.addEventListener('input', updateCharCount);
+
     // Focus on title input
     document.getElementById('nodeTitleInput').focus();
     document.getElementById('nodeTitleInput').select();
+}
+
+function updateCharCount() {
+    const editor = document.getElementById('nodeDescriptionInput');
+    const charCountDisplay = document.getElementById('charCount');
+
+    if (!editor || !charCountDisplay) return;
+
+    // Get plain text length (ignore HTML tags)
+    const plainText = editor.innerText || editor.textContent || '';
+    const length = plainText.length;
+    const maxLength = 5000;
+
+    charCountDisplay.textContent = `${length} / ${maxLength}`;
+
+    // Change color if approaching limit
+    if (length > maxLength) {
+        charCountDisplay.style.color = '#e53e3e'; // Red
+    } else if (length > maxLength * 0.9) {
+        charCountDisplay.style.color = '#f59e0b'; // Orange
+    } else {
+        charCountDisplay.style.color = '#999'; // Gray
+    }
 }
 
 function closeModal() {
@@ -526,12 +569,32 @@ function closeModal() {
 function saveNodeEdit() {
     if (!currentNode) return;
 
+    // Check if DOMPurify loaded
+    if (typeof DOMPurify === 'undefined') {
+        openErrorModal('Security library failed to load. Please refresh the page.');
+        return;
+    }
+
     pushToUndo();
     const newName = document.getElementById('nodeTitleInput').value.trim();
-    const newDescription = document.getElementById('nodeDescriptionInput').innerHTML.trim();
+    const rawDescription = document.getElementById('nodeDescriptionInput').innerHTML.trim();
+
+    // SANITIZE HTML before saving
+    const newDescription = DOMPurify.sanitize(rawDescription, {
+        ALLOWED_TAGS: ['b', 'i', 'u', 's', 'strong', 'em', 'br'],
+        ALLOWED_ATTR: [], // No attributes allowed
+        KEEP_CONTENT: true
+    });
 
     if (!newName) {
         openErrorModal('Title cannot be empty');
+        return;
+    }
+
+    // Check description length
+    const plainText = newDescription.replace(/<[^>]*>/g, '');
+    if (plainText.length > 5000) {
+        openErrorModal('Description is too long. Maximum 5000 characters allowed.');
         return;
     }
 
@@ -634,12 +697,38 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle Enter key to save in edit mode
     document.addEventListener('keydown', (e) => {
         const editMode = document.getElementById('editMode');
+        const editor = document.getElementById('nodeDescriptionInput');
+
         if (editMode && editMode.style.display !== 'none') {
+            // Enter on title input saves
             if (e.key === 'Enter' && e.target.id === 'nodeTitleInput') {
                 e.preventDefault();
                 saveNodeEdit();
             }
-            // For description (contenteditable), let browser handle Enter (new line) and Shift+Enter
+
+            // Keyboard shortcuts for formatting (only when editor is focused)
+            if (document.activeElement === editor) {
+                // Ctrl+B or Cmd+B for Bold
+                if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                    e.preventDefault();
+                    document.execCommand('bold', false, null);
+                    highlightToolbarButton('bold');
+                }
+
+                // Ctrl+I or Cmd+I for Italic
+                if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                    e.preventDefault();
+                    document.execCommand('italic', false, null);
+                    highlightToolbarButton('italic');
+                }
+
+                // Ctrl+U or Cmd+U for Underline
+                if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+                    e.preventDefault();
+                    document.execCommand('underline', false, null);
+                    highlightToolbarButton('underline');
+                }
+            }
         }
     });
 
@@ -652,8 +741,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const command = btn.getAttribute('data-command');
                 document.execCommand(command, false, null);
 
-                // Toggle active state visualization (simplified)
-                btn.classList.toggle('active');
+                // Toggle active state visualization
+                highlightToolbarButton(command);
 
                 // Keep focus in editor
                 document.getElementById('nodeDescriptionInput').focus();
@@ -661,6 +750,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function highlightToolbarButton(command) {
+    // Find button by data-command attribute
+    const btn = document.querySelector(`.format-btn[data-command="${command}"]`);
+    if (!btn) return;
+
+    // Toggle active class
+    btn.classList.add('active');
+
+    // Remove after short delay (visual feedback)
+    setTimeout(() => {
+        btn.classList.remove('active');
+    }, 200);
+}
 
 // --- Layout Helpers ---
 
