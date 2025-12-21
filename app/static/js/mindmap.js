@@ -810,10 +810,10 @@ function calculateNodeLayout(rootNode) {
         // Calculate Height
         let contentHeight = d.titleLines.length * LINE_HEIGHT;
         if (d.hasDescription) {
-            contentHeight += LINE_HEIGHT + 8; // Add space for description + gap
+            contentHeight += LINE_HEIGHT + 1; // Add space for description + gap
         }
 
-        d.height = Math.max(BASE_HEIGHT, contentHeight + PADDING);
+        d.height = Math.max(BASE_HEIGHT, contentHeight + 12);
     });
 
     // 3. Calculate Y positions (horizontal spacing)
