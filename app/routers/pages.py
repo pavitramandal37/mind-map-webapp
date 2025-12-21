@@ -11,6 +11,10 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@router.get("/login", response_class=HTMLResponse)
+async def read_login(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 @router.get("/signup", response_class=HTMLResponse)
@@ -24,3 +28,4 @@ async def read_dashboard(request: Request):
 @router.get("/editor/{map_id}", response_class=HTMLResponse)
 async def read_editor(request: Request, map_id: int):
     return templates.TemplateResponse("editor.html", {"request": request, "map_id": map_id})
+

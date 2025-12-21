@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Mind Map App - Visualize Your Ideas{% endblock %}
+
+{% block head %}
+<style>
+    .landing-hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80vh;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .landing-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: fadeInDown 0.8s ease-out;
+    }
+
+    .landing-subtitle {
+        font-size: 1.5rem;
+        color: var(--text-muted);
+        margin-bottom: 3rem;
+        max-width: 600px;
+        line-height: 1.6;
+        animation: fadeInUp 0.8s ease-out 0.2s backwards;
+    }
+
+    .cta-container {
+        display: flex;
+        gap: 1.5rem;
+        animation: fadeInUp 0.8s ease-out 0.4s backwards;
+    }
+
+    .btn-lg {
+        padding: 1rem 2.5rem;
+        font-size: 1.1rem;
+        border-radius: 50px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary-lg {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-primary-lg:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+    }
+
+    .btn-outline-lg {
+        background: transparent;
+        border: 2px solid var(--border-color);
+        color: var(--text-color);
+    }
+
+    .btn-outline-lg:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="landing-hero">
+        <h1 class="landing-title">Unleash Your Creativity</h1>
+        <p class="landing-subtitle">
+            Create beautiful mind maps in seconds. Organize your thoughts, plan projects, and potential with our
+            intuitive editor.
+        </p>
+        <div class="cta-container">
+            <a href="/dashboard" class="btn btn-lg btn-primary-lg">Try Now - No Signup Required</a>
+            <a href="/login" class="btn btn-lg btn-outline-lg">Sign In</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Client-side redirect for logged-in users
+    document.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            window.location.href = '/dashboard';
+        }
+    });
+</script>
+{% endblock %}

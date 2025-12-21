@@ -14,6 +14,22 @@
 </head>
 
 <body>
+    <nav class="navbar" id="mainNavbar" style="display: none;">
+        <div class="container">
+            <a href="/" class="logo" style="text-decoration: none;">MindMap</a>
+            <div class="nav-links">
+                <!-- Editor specific items -->
+                <a href="/dashboard" id="navDashboardLink" style="display: none;">Dashboard</a>
+                <span id="saveStatus"
+                    style="font-size: 12px; color: #999; margin-left: 20px; display: none;">Saved</span>
+
+                <!-- Standard items -->
+                <span id="userEmail" style="margin-right: 15px; color: var(--text-muted); font-size: 0.9em;"></span>
+                <a href="/login" id="navLoginBtn">Sign In</a>
+                <a href="#" id="navLogoutBtn" onclick="logout()" style="display: none;">Logout</a>
+            </div>
+        </div>
+    </nav>
     {% block content %}{% endblock %}
 
     <script>
@@ -27,6 +43,7 @@
         // Apply minimalist theme immediately
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme('minimalist');
+            updateNavigation();
         });
 
         // Auth Helpers
@@ -37,6 +54,85 @@
         function logout() {
             localStorage.removeItem('token');
             window.location.href = '/';
+        }
+
+        function updateNavigation() {
+            const token = getAuthToken();
+            const navbar = document.getElementById('mainNavbar');
+            const navLoginBtn = document.getElementById('navLoginBtn');
+            const navLogoutBtn = document.getElementById('navLogoutBtn');
+            const userEmailSpan = document.getElementById('userEmail');
+            const logo = document.querySelector('.logo');
+
+            // Editor specific
+            const navDashboardLink = document.getElementById('navDashboardLink');
+            const saveStatus = document.getElementById('saveStatus');
+            const isEditor = window.location.pathname.startsWith('/editor');
+
+            // Show navbar (it's hidden by default to prevent flicker)
+            // But only show it if we are NOT on the landing page (which has its own header/hero or uses base without nav?)
+            // Actually, base.html nav is generic. Let's show it everywhere EXCEPT maybe landing if intended (but user said "Keep styling minimal").
+            // For now, will show it.
+            if (navbar) navbar.style.display = 'block';
+
+            if (isEditor) {
+                // Editor Mode
+                if (navDashboardLink) navDashboardLink.style.display = 'inline-block';
+                if (saveStatus) saveStatus.style.display = 'inline-block';
+
+                // Hide standard auth items in editor if we want to match previous look, 
+                // but checking "Logout" might be useful. 
+                // The user's screenshot for Dashboard showed "Logout" (blue).
+                // The old editor nav had ONLY Dashboard and Saved.
+                // Let's keep it simple: Show Dashboard link. Hide "Sign in" probably?
+                // Guest can be in editor.
+
+                if (navLoginBtn) navLoginBtn.style.display = 'none';
+                if (navLogoutBtn) navLogoutBtn.style.display = 'none'; // Hide Logout in editor to save space/match old? Or keep it? 
+                // Let's hide userEmail and Logout to focus on editing, or keep them?
+                // "make better Nav bar" -> Maybe keep Logout?
+                // Previous editor nav: <a href="/dashboard">Dashboard</a> <span ...>Saved</span>.
+                // It did NOT have Logout.
+                if (userEmailSpan) userEmailSpan.style.display = 'none';
+
+                // Logo always goes to dashboard in editor (or stays safety?)
+                if (logo) logo.href = '/dashboard';
+
+            } else {
+                // Normal Mode (Dashboard / Home)
+                if (navDashboardLink) navDashboardLink.style.display = 'none';
+                if (saveStatus) saveStatus.style.display = 'none';
+                if (userEmailSpan) userEmailSpan.style.display = 'inline';
+
+                if (token) {
+                    // User is logged in
+                    if (navLoginBtn) navLoginBtn.style.display = 'none';
+                    if (navLogoutBtn) navLogoutBtn.style.display = 'inline-block';
+                    if (logo) logo.href = '/dashboard';
+
+                    // Decode token to get email if possible, or just show nothing
+                    // Simple token decode (JWT)
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        if (userEmailSpan && payload.sub) {
+                            userEmailSpan.textContent = payload.sub;
+                        }
+                    } catch (e) {
+                        console.error("Invalid token", e);
+                    }
+
+                } else {
+                    // User is guest
+                    if (navLoginBtn) navLoginBtn.style.display = 'inline-block';
+                    if (navLogoutBtn) navLogoutBtn.style.display = 'none';
+                    if (userEmailSpan) userEmailSpan.textContent = '';
+                    if (logo) logo.href = '/';
+
+                    {% if guest_mode %}
+                    // We could add a "Guest Mode" badge here in Phase 3
+                    {% endif %}
+                }
+            }
         }
     </script>
     {% block scripts %}{% endblock %}

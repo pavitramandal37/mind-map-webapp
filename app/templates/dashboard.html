@@ -67,14 +67,7 @@
 {% endblock %}
 
 {% block content %}
-<nav class="navbar">
-    <div class="container">
-        <div class="logo">MindMap</div>
-        <div class="nav-links">
-            <a href="#" onclick="logout()">Logout</a>
-        </div>
-    </div>
-</nav>
+
 
 <div class="container">
 
@@ -200,8 +193,16 @@
 
     async function loadMaps() {
         const token = getAuthToken();
+        const isGuest = !token;
+
+        if (isGuest) {
+            console.log("Guest Mode: Showing empty state");
+            // Phase 2 will handle local storage
+            return;
+        }
+
         if (!token) {
-            window.location.href = '/';
+            // Redundant check, but keeping for safety if logic changes above
             return;
         }
 
