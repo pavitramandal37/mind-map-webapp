@@ -60,12 +60,56 @@ class MindMapBase(BaseModel):
 
 
 class MindMapCreate(MindMapBase):
-    pass
+    @field_validator('data')
+    @classmethod
+    def validate_mindmap_data(cls, v: str) -> str:
+        """Validate mind map data structure."""
+        import json
+        try:
+            data = json.loads(v)
+            # Recursively validate all node descriptions
+            cls._validate_node_descriptions(data)
+            return v
+        except json.JSONDecodeError:
+            raise ValueError('Invalid JSON format')
+        except ValueError as e:
+            raise ValueError(str(e))
+    
+    @staticmethod
+    def _validate_node_descriptions(node: dict, max_length: int = 5000):
+        """Recursively validate node descriptions."""
+        if 'description' in node and node['description']:
+            desc = node['description']
+            if len(desc) > max_length:
+                raise ValueError(f"Node description exceeds {max_length} characters")
+        
+        # Recursively check children
+        if 'children' in node and isinstance(node['children'], list):
+            for child in node['children']:
+                MindMapCreate._validate_node_descriptions(child, max_length)
 
 
 class MindMapUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     data: Optional[str] = None
+    
+    @field_validator('data')
+    @classmethod
+    def validate_mindmap_data(cls, v: Optional[str]) -> Optional[str]:
+        """Validate mind map data structure."""
+        if v is None:
+            return v
+        
+        import json
+        try:
+            data = json.loads(v)
+            # Recursively validate all node descriptions
+            MindMapCreate._validate_node_descriptions(data)
+            return v
+        except json.JSONDecodeError:
+            raise ValueError('Invalid JSON format')
+        except ValueError as e:
+            raise ValueError(str(e))
 
 
 class MindMapResponse(MindMapBase):
