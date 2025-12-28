@@ -228,7 +228,8 @@
                     card.innerHTML = `
                         <div onclick="window.location.href='/editor/${map.id}'" style="flex-grow: 1;">
                             <div class="map-title">${map.title}</div>
-                            <div class="map-date">Created: ${new Date(map.created_at || Date.now()).toLocaleDateString()}</div>
+                            <div class="map-date">Created: ${map.created_at ? new Date(map.created_at).toLocaleDateString() : 'Unknown'}</div>
+                            <div class="map-date">Updated: ${map.updated_at ? new Date(map.updated_at).toLocaleDateString() : 'Unknown'}</div>
                         </div>
                         <div class="map-actions">
                             <button class="action-btn" onclick="openEditModal(${map.id}, '${map.title}')">✏️ Rename</button>

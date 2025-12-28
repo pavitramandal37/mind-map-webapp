@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
 from typing import Optional
+from datetime import datetime
 from .core.config import settings
 
 
@@ -71,6 +72,8 @@ class MindMapUpdate(BaseModel):
 class MindMapResponse(MindMapBase):
     id: int
     user_id: int
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
     class Config:
         from_attributes = True  # Pydantic v2 (was orm_mode in v1)
