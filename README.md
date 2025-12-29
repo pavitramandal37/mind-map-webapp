@@ -1,7 +1,7 @@
 # Mind Map Web Application
 
 A modern, interactive mind mapping web application built with Python (FastAPI) and Vanilla JS.
-Try App: https://www.mindmapify.in/
+- **Try App:** https://www.mindmapify.in/
 
 ## Prerequisites
 
